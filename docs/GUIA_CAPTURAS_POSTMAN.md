@@ -71,6 +71,6 @@ Usá estas 3 capturas obligatorias en el informe técnico. Cada una debe mostrar
 ## Exportar a PDF
 
 1. Abrí `docs/INFORME_TECNICO.md` en Word / Google Docs / VS Code + extensión Markdown PDF
-2. Reemplazá `https://github.com/<USUARIO>/<REPO>` por la URL real
-3. Insertá las 3 capturas en los marcadores TC01–TC03
+2. Confirmá la URL del repo: https://github.com/MaxVasquezR/clinica-jesus-del-norte
+3. Insertá las 3 capturas en los marcadores TC01–TC03 del Word (`docs/INFORME_TECNICO.docx`)
 4. Exportá a PDF y subí **un solo integrante** a la plataforma virtual

@@ -21,8 +21,8 @@
 
 > Ajusten los roles según la participación real del equipo antes de exportar a PDF.
 
-**Repositorio GitHub:** `https://github.com/<USUARIO>/<REPO>`  
-> Obligatorio: publicar el código, pegar aquí la URL final y dar acceso de lectura al docente.
+**Repositorio GitHub:** https://github.com/MaxVasquezR/clinica-jesus-del-norte  
+> Repositorio público con acceso de lectura para el docente.
 
 **Colección Postman del proyecto:** `postman/CitaSync_API_Tests.json`  
 **Guía paso a paso de capturas:** `docs/GUIA_CAPTURAS_POSTMAN.md`
@@ -162,8 +162,8 @@ Antes de probar: `dotnet run --project src/ClinicaJesusDelNorte.API/ClinicaJesus
 ## 7. INSTRUCCIONES DE EJECUCIÓN
 
 ```bash
-git clone https://github.com/<USUARIO>/<REPO>.git
-cd clinica_jesus_del_norte
+git clone https://github.com/MaxVasquezR/clinica-jesus-del-norte.git
+cd clinica-jesus-del-norte
 dotnet restore
 dotnet build
 dotnet run --project src/ClinicaJesusDelNorte.API/ClinicaJesusDelNorte.API.csproj

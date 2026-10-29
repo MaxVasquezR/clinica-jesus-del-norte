@@ -18,7 +18,7 @@ Persistencia **simulada en memoria** (`List<T>`), sin base de datos, según la r
 
 | Campo | Valor |
 |-------|--------|
-| GitHub (público o lectura para el docente) | `https://github.com/<USUARIO>/<REPO>.git` ← **reemplazar al publicar** |
+| GitHub (público — acceso de lectura para el docente) | https://github.com/MaxVasquezR/clinica-jesus-del-norte |
 | Colección Postman | [`postman/CitaSync_API_Tests.json`](postman/CitaSync_API_Tests.json) |
 | Informe técnico (borrador PDF) | [`docs/INFORME_TECNICO.md`](docs/INFORME_TECNICO.md) |
 | Guía de capturas Postman | [`docs/GUIA_CAPTURAS_POSTMAN.md`](docs/GUIA_CAPTURAS_POSTMAN.md) |
@@ -31,9 +31,9 @@ Persistencia **simulada en memoria** (`List<T>`), sin base de datos, según la r
 ## Instalación y ejecución
 
 ```bash
-# 1. Clonar el repositorio (pegar la URL real de GitHub)
-git clone https://github.com/<USUARIO>/<REPO>.git
-cd clinica_jesus_del_norte
+# 1. Clonar el repositorio
+git clone https://github.com/MaxVasquezR/clinica-jesus-del-norte.git
+cd clinica-jesus-del-norte
 
 # 2. Restaurar y compilar
 dotnet restore
