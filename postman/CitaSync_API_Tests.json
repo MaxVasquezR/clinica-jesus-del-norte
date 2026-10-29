@@ -1,0 +1,294 @@
+{
+  "info": {
+    "name": "CitaSync API — Clínica Jesús del Norte",
+    "description": "Colección de pruebas funcionales para la API RESTful CitaSync.\nCurso: Desarrollo de Servicios Web — IDAT 2026",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080"
+    },
+    {
+      "key": "pacienteId",
+      "value": "1"
+    },
+    {
+      "key": "citaId",
+      "value": "1"
+    }
+  ],
+  "item": [
+    {
+      "name": "01 - Pacientes",
+      "item": [
+        {
+          "name": "TC01 - Crear paciente (POST)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 201 Created', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test('success = true', function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.success).to.eql(true);",
+                  "    if (json.data && json.data.id) {",
+                  "        pm.collectionVariables.set('pacienteId', json.data.id);",
+                  "    }",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tipoDocumento\": \"DNI\",\n  \"numeroDocumento\": \"48129999\",\n  \"nombres\": \"Max Ayrton\",\n  \"apellidos\": \"Vásquez Ruiz\",\n  \"telefono\": \"987654321\",\n  \"email\": \"max.nuevo@email.com\",\n  \"tipoSeguro\": \"Particular\",\n  \"activo\": true\n}"
+            },
+            "url": "{{baseUrl}}/api/pacientes"
+          }
+        },
+        {
+          "name": "TC01b - Conflicto documento duplicado (409)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 409 Conflict', function () {",
+                  "    pm.response.to.have.status(409);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tipoDocumento\": \"DNI\",\n  \"numeroDocumento\": \"48129532\",\n  \"nombres\": \"Duplicado\",\n  \"apellidos\": \"Prueba\",\n  \"tipoSeguro\": \"Particular\",\n  \"activo\": true\n}"
+            },
+            "url": "{{baseUrl}}/api/pacientes"
+          }
+        },
+        {
+          "name": "TC01c - Listar pacientes (GET)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Tiene items', function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.data.items.length).to.be.above(0);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/pacientes?page=0&size=20"
+          }
+        },
+        {
+          "name": "TC01d - Paciente no encontrado (404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 404', function () {",
+                  "    pm.response.to.have.status(404);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/pacientes/99999"
+          }
+        }
+      ]
+    },
+    {
+      "name": "02 - Citas",
+      "item": [
+        {
+          "name": "TC02 - Consulta general de citas (GET)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Respuesta paginada', function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.success).to.eql(true);",
+                  "    pm.expect(json.data).to.have.property('items');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/citas?page=0&size=20"
+          }
+        },
+        {
+          "name": "TC03 - Actualizar estado a EnTriaje (PATCH)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Estado EnTriaje', function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.data.estado).to.eql('EnTriaje');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"estado\": \"EnTriaje\",\n  \"observacionCancelacion\": null\n}"
+            },
+            "url": "{{baseUrl}}/api/citas/{{citaId}}/estado"
+          }
+        },
+        {
+          "name": "TC04 - Crear nueva cita (POST)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 201 Created', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "var json = pm.response.json();",
+                  "if (json.data && json.data.id) {",
+                  "    pm.collectionVariables.set('citaIdNueva', json.data.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pacienteId\": 2,\n  \"medicoId\": 2,\n  \"especialidadId\": 2,\n  \"fechaHoraCita\": \"2026-12-15T11:00:00\",\n  \"motivoConsulta\": \"Control pediátrico de rutina\"\n}"
+            },
+            "url": "{{baseUrl}}/api/citas"
+          }
+        },
+        {
+          "name": "TC05 - Cancelar cita (DELETE)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Estado Cancelada', function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.data.estado).to.eql('Cancelada');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"observacionCancelacion\": \"Paciente solicitó reprogramación por motivos laborales\"\n}"
+            },
+            "url": "{{baseUrl}}/api/citas/{{citaIdNueva}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "03 - Flujo clínico jerárquico",
+      "item": [
+        {
+          "name": "TC06 - Registrar triaje",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sintomas\": \"Cefalea y mareos leves\",\n  \"presionArterial\": \"120/80\",\n  \"frecuenciaCardiaca\": 78,\n  \"temperatura\": 36.8,\n  \"pesoKg\": 70,\n  \"tallaCm\": 170,\n  \"prioridad\": \"Media\"\n}"
+            },
+            "url": "{{baseUrl}}/api/citas/1/triaje"
+          }
+        },
+        {
+          "name": "TC07 - Listar especialidades",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/especialidades?page=0&size=20"
+          }
+        },
+        {
+          "name": "TC08 - Listar médicos",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/medicos?page=0&size=20"
+          }
+        }
+      ]
+    }
+  ]
+}
