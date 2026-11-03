@@ -72,7 +72,8 @@ public class CitaService : ICitaService
     public CitaResponseDto Crear(CrearCitaDto dto)
     {
         ValidarParticipantes(dto.PacienteId, dto.MedicoId, dto.EspecialidadId);
-        ValidarHorario(dto.MedicoId, dto.FechaHoraCita, null);
+        var fechaHora = Horas.ALocal(dto.FechaHoraCita!.Value);
+        ValidarHorario(dto.MedicoId, fechaHora, null);
 
         var cita = new CitaMedica
         {
@@ -80,7 +81,7 @@ public class CitaService : ICitaService
             PacienteId = dto.PacienteId,
             MedicoId = dto.MedicoId,
             EspecialidadId = dto.EspecialidadId,
-            FechaHoraCita = dto.FechaHoraCita,
+            FechaHoraCita = fechaHora,
             MotivoConsulta = Texto.Limpiar(dto.MotivoConsulta),
             PrecioConsulta = _especialidades.GetById(dto.EspecialidadId)!.PrecioBase,
             Estado = EstadoCita.Solicitada
@@ -98,8 +99,9 @@ public class CitaService : ICitaService
 
         if (dto.FechaHoraCita.HasValue)
         {
-            ValidarHorario(cita.MedicoId, dto.FechaHoraCita.Value, cita.Id);
-            cita.FechaHoraCita = dto.FechaHoraCita.Value;
+            var fechaHora = Horas.ALocal(dto.FechaHoraCita.Value);
+            ValidarHorario(cita.MedicoId, fechaHora, cita.Id);
+            cita.FechaHoraCita = fechaHora;
         }
 
         if (dto.MotivoConsulta is not null)

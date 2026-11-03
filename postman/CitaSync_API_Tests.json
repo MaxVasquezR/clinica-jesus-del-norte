@@ -50,6 +50,14 @@
       "value": ""
     },
     {
+      "key": "usuarioIdNuevo",
+      "value": ""
+    },
+    {
+      "key": "tokenNuevo",
+      "value": ""
+    },
+    {
       "key": "fechaCita",
       "value": ""
     },
@@ -1419,6 +1427,63 @@
           }
         },
         {
+          "name": "TC04f - Cita sin fecha (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 400 Bad Request\", function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "pm.test(\"success = false\", function () {",
+                  "    pm.expect(pm.response.json().success).to.eql(false);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/citas",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "citas"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenRecepcion}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pacienteId\": 2,\n  \"medicoId\": 2,\n  \"especialidadId\": 2\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
           "name": "TC04e - Confirmar la cita nueva (PATCH)",
           "event": [
             {
@@ -1942,6 +2007,54 @@
                   "language": "json"
                 }
               }
+            }
+          }
+        },
+        {
+          "name": "TC07c - Un error no deja cambios a medias",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"evolucion = Paciente estable, refiere cefalea leve.\", function () {",
+                  "    pm.expect(pm.response.json().data.evolucion).to.eql(\"Paciente estable, refiere cefalea leve.\");",
+                  "});",
+                  "pm.test(\"Sin modificación registrada\", function () {",
+                  "    pm.expect(pm.response.json().data.usuarioActualizacion).to.be.undefined;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/citas/{{citaId}}/atencion",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "citas",
+                "{{citaId}}",
+                "atencion"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenMedico}}",
+                  "type": "string"
+                }
+              ]
             }
           }
         },
@@ -3094,7 +3207,11 @@
                   "    var d = pm.response.json().data;",
                   "    pm.expect(d.usuarioCreacion).to.eql(\"admin\");",
                   "    pm.expect(d.fechaCreacion).to.be.a('string');",
-                  "});"
+                  "});",
+                  "var json = pm.response.json();",
+                  "if (json.data && json.data.id !== undefined) {",
+                  "    pm.collectionVariables.set('usuarioIdNuevo', json.data.id);",
+                  "}"
                 ]
               }
             }
@@ -3135,6 +3252,166 @@
                   "language": "json"
                 }
               }
+            }
+          }
+        },
+        {
+          "name": "TC15d - Login del usuario nuevo",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"usuario.rol = Enfermera\", function () {",
+                  "    pm.expect(pm.response.json().data.usuario.rol).to.eql(\"Enfermera\");",
+                  "});",
+                  "pm.test(\"Devuelve token JWT\", function () {",
+                  "    var d = pm.response.json().data;",
+                  "    pm.expect(d.token.split('.').length).to.eql(3);",
+                  "    pm.collectionVariables.set('tokenNuevo', d.token);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"cruiz\",\n  \"contrasena\": \"Enfermera2026\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "TC15e - Desactivar el usuario nuevo",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"activo = false\", function () {",
+                  "    pm.expect(pm.response.json().data.activo).to.eql(false);",
+                  "});",
+                  "pm.test(\"Auditoría: usuarioActualizacion = admin\", function () {",
+                  "    var d = pm.response.json().data;",
+                  "    pm.expect(d.usuarioActualizacion).to.eql(\"admin\");",
+                  "    pm.expect(d.fechaActualizacion).to.be.a('string');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/usuarios/{{usuarioIdNuevo}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "usuarios",
+                "{{usuarioIdNuevo}}"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenAdmin}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rolId\": 3,\n  \"activo\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "TC15f - Su token deja de servir (401)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 401 Unauthorized\", function () {",
+                  "    pm.response.to.have.status(401);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/perfil",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "perfil"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenNuevo}}",
+                  "type": "string"
+                }
+              ]
             }
           }
         },

@@ -57,6 +57,25 @@ builder.Services
             NameClaimType = ClaimTypes.Name,
             RoleClaimType = ClaimTypes.Role
         };
+        options.Events = new JwtBearerEvents
+        {
+            // Un token emitido antes de desactivar al usuario o de cambiar su rol deja de servir.
+            OnTokenValidated = context =>
+            {
+                var servicios = context.HttpContext.RequestServices;
+                var id = int.TryParse(context.Principal?.FindFirstValue(ClaimTypes.NameIdentifier), out var valor) ? valor : 0;
+                var usuario = servicios.GetRequiredService<IRepositorio<Usuario>>().GetById(id);
+                var rol = usuario is null ? null : servicios.GetRequiredService<IRepositorio<Rol>>().GetById(usuario.RolId);
+
+                if (usuario is null || !usuario.Activo || rol is null || !rol.Activo ||
+                    context.Principal?.IsInRole(rol.Nombre.ToString()) != true)
+                {
+                    context.Fail("La sesión ya no es válida. Inicie sesión nuevamente.");
+                }
+
+                return Task.CompletedTask;
+            }
+        };
     });
 builder.Services.AddAuthorization(options =>
 {

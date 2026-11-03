@@ -73,16 +73,16 @@ public class AuthService : IAuthService
                 : $"{CredencialesInvalidas} Le quedan {MaximoIntentos - usuario.IntentosFallidos} intento(s).");
         }
 
+        var rol = _roles.GetById(usuario.RolId)!;
+        if (!rol.Activo)
+            throw new UnauthorizedException("El rol del usuario está inactivo. Comuníquese con Administración.");
+
         if (resultado == PasswordVerificationResult.SuccessRehashNeeded)
             usuario.ContrasenaHash = _hasher.HashPassword(usuario, dto.Contrasena);
 
         usuario.IntentosFallidos = 0;
         usuario.UltimoAcceso = ahora;
         _usuarios.Update(usuario);
-
-        var rol = _roles.GetById(usuario.RolId)!;
-        if (!rol.Activo)
-            throw new UnauthorizedException("El rol del usuario está inactivo. Comuníquese con Administración.");
 
         var (token, expira) = _tokens.Generar(usuario, rol.Nombre);
         return new LoginResponseDto

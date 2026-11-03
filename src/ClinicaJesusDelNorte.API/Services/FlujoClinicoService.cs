@@ -109,9 +109,7 @@ public class FlujoClinicoService : IFlujoClinicoService
     public AtencionResponseDto ActualizarAtencion(int citaId, ActualizarAtencionDto dto)
     {
         var (cita, atencion) = ObtenerAtencionEnCurso(citaId);
-
-        atencion.Evolucion = Texto.Limpiar(dto.Evolucion);
-        atencion.Tratamiento = Texto.Limpiar(dto.Tratamiento);
+        var evolucion = Texto.Limpiar(dto.Evolucion);
 
         if (dto.Estado == EstadoAtencion.Completada)
         {
@@ -122,9 +120,13 @@ public class FlujoClinicoService : IFlujoClinicoService
                 throw new BusinessException("La atención debe tener exactamente un diagnóstico principal.");
         }
 
-        if (dto.Estado == EstadoAtencion.Suspendida && atencion.Evolucion is null)
+        if (dto.Estado == EstadoAtencion.Suspendida && evolucion is null)
             throw new BusinessException("Indique en la evolución el motivo de la suspensión.");
 
+        // Se asigna recién después de validar: el repositorio guarda la misma instancia,
+        // así que un error a mitad de camino dejaría cambios sin auditoría.
+        atencion.Evolucion = evolucion;
+        atencion.Tratamiento = Texto.Limpiar(dto.Tratamiento);
         atencion.Estado = dto.Estado;
         if (dto.Estado != EstadoAtencion.EnCurso)
         {

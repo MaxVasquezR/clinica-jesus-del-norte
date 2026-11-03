@@ -16,7 +16,7 @@ public class CrearCitaDto
     public int EspecialidadId { get; set; }
 
     [Required(ErrorMessage = ValidationMessages.Obligatorio)]
-    public DateTime FechaHoraCita { get; set; }
+    public DateTime? FechaHoraCita { get; set; }
 
     [StringLength(500, ErrorMessage = ValidationMessages.LongitudMaxima)]
     public string? MotivoConsulta { get; set; }

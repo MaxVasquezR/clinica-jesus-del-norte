@@ -220,7 +220,7 @@ curl http://localhost:8080/api/citas/1/historial -H "Authorization: Bearer $TOKE
 3. Ejecutar la colección completa con el Runner, en orden: la carpeta 00 inicia sesión con cada rol y guarda los tokens
 4. Para repetirla, reiniciar antes la API: las pruebas cambian los datos en memoria
 
-Son 59 solicitudes en 6 carpetas. Recorren el flujo completo: recepción, triaje, atención médica, pago y administración. Además prueban:
+Son 64 solicitudes en 6 carpetas. Recorren el flujo completo: recepción, triaje, atención médica, pago y administración. Además prueban:
 
 - Respuestas 401 sin sesión y 403 cuando el rol no tiene permiso.
 - Que solo el médico asignado pueda atender la cita.
@@ -235,4 +235,3 @@ Son 59 solicitudes en 6 carpetas. Recorren el flujo completo: recepción, triaje
 - Excepciones centralizadas en `ExceptionMiddleware`.
 - El repositorio genérico es el único que llena los campos de auditoría, así ninguna tabla puede quedar sin ellos.
 - Contraseñas guardadas como hash (`PasswordHasher` de ASP.NET Core); la API nunca las devuelve.
-- La [exportación de Swagger](docs/swagger.json) corresponde a esta versión de la API.

@@ -21,6 +21,17 @@ public static class Horas
         _ => DiaSemana.Domingo
     };
 
+    /// <summary>
+    /// Lleva una fecha a la hora local de la clínica. Una fecha con Z (UTC) se convierte;
+    /// una sin zona se toma como hora local. Así el horario y los cruces comparan lo mismo.
+    /// </summary>
+    public static DateTime ALocal(DateTime fecha) => fecha.Kind switch
+    {
+        DateTimeKind.Utc => fecha.ToLocalTime(),
+        DateTimeKind.Unspecified => DateTime.SpecifyKind(fecha, DateTimeKind.Local),
+        _ => fecha
+    };
+
     /// <summary>Minutos desde las 00:00, para comparar bloques sin desbordar la medianoche.</summary>
     public static int Minutos(TimeOnly hora) => hora.Hour * 60 + hora.Minute;
 }
