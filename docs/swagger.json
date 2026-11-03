@@ -5700,7 +5700,6 @@
       },
       "EstadoPago": {
         "enum": [
-          "Pendiente",
           "Pagado",
           "Anulado",
           "Reembolsado"

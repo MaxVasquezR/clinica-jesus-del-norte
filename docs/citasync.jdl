@@ -29,6 +29,8 @@
  *   - MedicoEspecialidad: medico + especialidad debe ser único.
  *   - AtencionDiagnostico: atencion + cie10 debe ser único, y cada atención
  *     tiene un solo diagnóstico principal.
+ *   - HorarioMedico: horaInicio < horaFin, y los bloques activos de un médico
+ *     no se cruzan en el mismo día.
  *   - CitaMedica: el médico debe tener la especialidad de la cita, y la hora
  *     debe caer en su HorarioMedico sin solaparse con otra de sus citas.
  *   - CitaMedica: observacionCancelacion es obligatoria si estado = CANCELADA.
@@ -42,6 +44,9 @@
  *
  * JDL no soporta herencia ni tipo hora: por eso Persona es una tabla propia y
  * horaInicio/horaFin son texto HH:mm.
+ *
+ * Los nombres de las colecciones van en singular porque JHipster los pluraliza
+ * (horario -> horarios).
  */
 
 // ---------- Enumeraciones ----------
@@ -79,7 +84,7 @@ enum MetodoPago {
 }
 
 enum EstadoPago {
-  PENDIENTE, PAGADO, ANULADO, REEMBOLSADO
+  PAGADO, ANULADO, REEMBOLSADO
 }
 
 enum TipoComprobante {
@@ -336,11 +341,18 @@ relationship ManyToOne {
 }
 
 relationship OneToMany {
-  Medico{especialidades} to MedicoEspecialidad{medico(codigoColegiatura) required}
-  Especialidad{medicos} to MedicoEspecialidad{especialidad(nombre) required}
+  Medico{especialidadAsignada} to MedicoEspecialidad{medico(codigoColegiatura) required}
+  Especialidad{medicoAsignado} to MedicoEspecialidad{especialidad(nombre) required}
   Medico{horario} to HorarioMedico{medico(codigoColegiatura) required}
-  CitaMedica{historial} to HistorialCita{cita(codigoCita) required}
+  CitaMedica{historialCita} to HistorialCita{cita(codigoCita) required}
   CitaMedica{pago} to PagoTransaccion{cita(codigoCita) required}
   AtencionMedica{diagnostico} to AtencionDiagnostico{atencion required}
   AtencionMedica{recetaDetalle} to RecetaDetalle{atencion required}
 }
+
+// ---------- Opciones: describen cómo está construida la API ----------
+
+dto * with mapstruct
+service * with serviceImpl
+paginate Usuario, Paciente, Medico, Especialidad, Aseguradora, Cie10, CitaMedica with pagination
+filter Medico, Cie10, CitaMedica
