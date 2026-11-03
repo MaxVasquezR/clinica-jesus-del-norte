@@ -1,11 +1,12 @@
 namespace ClinicaJesusDelNorte.API.Models.Entities;
 
 /// <summary>
-/// Médico colegiado. Hereda datos demográficos de <see cref="Persona"/>.
+/// Médico colegiado; sus especialidades están en MedicoEspecialidad.
 /// </summary>
-public class Medico : Persona
+public class Medico : EntidadAuditable
 {
+    public int PersonaId { get; set; }
     public string CodigoColegiatura { get; set; } = string.Empty;
     public string? Rne { get; set; }
-    public int EspecialidadId { get; set; }
+    public bool Activo { get; set; } = true;
 }

@@ -57,51 +57,109 @@ La API queda disponible en:
 
 ```
 src/ClinicaJesusDelNorte.API/
-├── Controllers/     # Endpoints HTTP (REST)
-├── Services/        # Lógica de negocio + interfaces
+├── Controllers/     # Endpoints HTTP (REST) con permisos por rol
+├── Services/        # Lógica de negocio + interfaces + datos de demostración
 ├── Models/
-│   ├── Entities/    # Dominio (Persona → Paciente/Médico, Cita, etc.)
+│   ├── Entities/    # Las 17 entidades del JDL; todas heredan de EntidadAuditable
 │   ├── DTOs/        # Contratos de entrada/salida + validaciones
 │   ├── Enums/       # Estados y catálogos tipados
 │   └── Common/      # ApiResponse, PagedResult, Paginador, mensajes de validación
-├── Repository/      # Persistencia en memoria (List<T>)
+├── Repository/      # Repositorio genérico en memoria: asigna IDs y auditoría
+├── Seguridad/       # JWT, roles y usuario de la sesión
 ├── Middleware/      # Manejo centralizado de errores y validación
-└── Exceptions/      # NotFound, Conflict, Business
+└── Exceptions/      # NotFound, Conflict, Business, Unauthorized, Forbidden
 ```
+
+## Modelo de datos
+
+El modelo está en [`docs/citasync.jdl`](docs/citasync.jdl) (17 entidades, 10 enums). Para ver el diagrama, pega el archivo en [JDL-Studio](https://start.jhipster.tech/jdl-studio/).
+
+- **Quién usa el sistema:** solo el personal. Cada `Usuario` tiene un `Rol`: Administrador, Recepcionista, Enfermera, Medico o Cajero. El paciente no inicia sesión.
+- **Auditoría en todas las tablas:** `fechaCreacion`, `usuarioCreacion`, `fechaActualizacion` y `usuarioActualizacion`. El usuario sale del token de la sesión; los datos de demostración quedan como `SISTEMA`.
+- **Historial de la cita:** cada cambio de estado deja una fila en `historial_cita` con quién lo hizo.
+- En el JDL los enums van en MAYÚSCULAS (`EN_TRIAJE`); en C# y en el JSON van en PascalCase (`EnTriaje`).
+
+## Autenticación
+
+Todos los endpoints, salvo el login, exigen un token JWT.
+
+1. `POST /api/auth/login` con `{ "username": "recepcion", "contrasena": "CitaSync2026" }`.
+2. Envía el token en la cabecera `Authorization: Bearer {token}`. En Swagger, usa el botón **Authorize**.
+
+Tres intentos fallidos bloquean el usuario 15 minutos; Administración puede desbloquearlo antes.
+
+| Usuario | Rol | Qué puede hacer |
+|---------|-----|-----------------|
+| `admin` | Administrador | Usuarios, médicos, horarios, especialidades, aseguradoras y CIE-10 |
+| `recepcion` | Recepcionista | Pacientes; reservar, reprogramar, confirmar, marcar llegada y cancelar citas |
+| `enfermeria` | Enfermera | Registrar el triaje |
+| `cmendoza`, `jsalazar` | Medico | Atención, diagnósticos y receta de **sus** citas |
+| `caja` | Cajero | Registrar, anular y reembolsar pagos |
+
+Contraseña de todos: `CitaSync2026`. La clave de firma del token está en `appsettings.json` solo para el entorno académico.
 
 ## Endpoints principales
 
-### Pacientes — `/api/pacientes`
+Las consultas (`GET`) están abiertas a todo el personal con sesión, salvo usuarios y roles (solo Administrador), pagos (Administrador, Recepcionista y Cajero) y la atención médica (Enfermera y Médico).
+
+### Autenticación — `/api/auth`
 
 | Método | Ruta | Descripción |
 |--------|------|-------------|
-| GET | `/api/pacientes?page=0&size=20` | Listado paginado |
-| GET | `/api/pacientes/{id}` | Detalle |
-| POST | `/api/pacientes` | Registrar |
-| PUT | `/api/pacientes/{id}` | Actualizar |
-| DELETE | `/api/pacientes/{id}` | Baja lógica |
+| POST | `/api/auth/login` | Inicia sesión y devuelve el token |
+| GET | `/api/auth/perfil` | Usuario de la sesión |
 
-### Médicos — `/api/medicos`
+### Usuarios y roles — Administrador
 
-CRUD completo (misma forma que pacientes).
+| Método | Ruta | Descripción |
+|--------|------|-------------|
+| GET | `/api/roles` | Roles del sistema |
+| GET/POST | `/api/usuarios` | Listar / crear (reutiliza la persona si ya existe por documento) |
+| GET/PUT | `/api/usuarios/{id}` | Detalle / cambiar rol o activar |
+| PATCH | `/api/usuarios/{id}/desbloquear` | Quitar el bloqueo por intentos fallidos |
+| PATCH | `/api/usuarios/{id}/contrasena` | Asignar contraseña nueva |
 
-### Especialidades — `/api/especialidades`
+### Catálogos — escritura solo Administrador
 
-CRUD completo.
+| Recurso | Ruta | Notas |
+|---------|------|-------|
+| Especialidades | `/api/especialidades` | CRUD; cambiar la tarifa no altera las citas ya reservadas |
+| Aseguradoras | `/api/aseguradoras` | CRUD |
+| CIE-10 | `/api/cie10?buscar=` | CRUD con búsqueda por código o descripción |
+| Médicos | `/api/medicos?especialidadId=` | CRUD; un médico puede tener varias especialidades |
+| Horarios | `/api/medicos/{id}/horarios` | Bloques semanales HH:mm sin cruces |
 
-### Citas — `/api/citas`
+Las bajas (`DELETE`) son lógicas: ponen `activo = false`.
+
+### Pacientes — `/api/pacientes` (escritura: Recepcionista)
+
+CRUD con baja lógica. Los datos personales van en el objeto `persona`.
+
+### Citas — `/api/citas` (escritura: Recepcionista)
 
 | Método | Ruta | Descripción |
 |--------|------|-------------|
 | GET | `/api/citas?page=0&size=20` | Listado (filtros: `estado`, `medicoId`, `pacienteId`) |
 | GET | `/api/citas/{id}` | Detalle |
-| POST | `/api/citas` | Reservar cita |
-| PUT | `/api/citas/{id}` | Actualizar |
-| PATCH | `/api/citas/{id}/estado` | Cambio de estado controlado |
+| GET | `/api/citas/{id}/historial` | Cambios de estado con su usuario |
+| POST | `/api/citas` | Reservar (estado `Solicitada`, dentro del horario del médico y sin cruces) |
+| PUT | `/api/citas/{id}` | Reprogramar o corregir el motivo |
+| PATCH | `/api/citas/{id}/estado` | Confirmar, `NoAsistio` o cancelar |
+| PATCH | `/api/citas/{id}/llegada` | Registrar la llegada del paciente |
 | DELETE | `/api/citas/{id}` | Cancelar (requiere body con observación) |
-| POST/GET | `/api/citas/{id}/triaje` | Triaje |
-| POST/GET/PUT | `/api/citas/{id}/atencion` | Atención médica |
-| POST/GET | `/api/citas/{id}/pagos` | Pago |
+
+### Flujo clínico — `/api/citas/{citaId}`
+
+| Método | Ruta | Rol | Efecto en la cita |
+|--------|------|-----|-------------------|
+| POST | `/triaje` | Enfermera | `Confirmada` → `EnTriaje` (requiere llegada) |
+| POST | `/atencion` | Médico asignado | `EnTriaje` → `EnAtencion` |
+| POST | `/atencion/diagnosticos` | Médico asignado | El primero queda como principal |
+| PATCH | `/atencion/diagnosticos/{id}/principal` | Médico asignado | Cambia el diagnóstico principal |
+| POST | `/atencion/receta` | Médico asignado | Agrega un medicamento |
+| PUT | `/atencion` | Médico asignado | Con `estado: Completada` (y un diagnóstico principal) → `Finalizada` |
+| GET/POST | `/pagos` | Cajero | Varios pagos por cita, pero solo uno `Pagado` vigente |
+| PATCH | `/pagos/{pagoId}/estado` | Cajero | `Anulado` o `Reembolsado`, con motivo |
 
 ## Formato de respuesta
 
@@ -123,46 +181,58 @@ Cuando hay un error, `success` es `false` y `errors` lista los problemas de vali
 }
 ```
 
-Códigos HTTP usados: `200`, `201`, `400`, `404`, `409`, `422`, `500`.
+Códigos HTTP usados: `200`, `201`, `400`, `401`, `403`, `404`, `409`, `422`, `500`.
 
 ## Datos de demostración (seed)
 
-Al iniciar la API ya existen:
+Al iniciar la API ya existen, auditados como `SISTEMA`:
 
-- 3 especialidades (Cardiología, Pediatría, Traumatología)
-- 3 médicos
+- 5 roles y 6 usuarios (tabla de Autenticación)
+- 3 especialidades (Cardiología, Pediatría, Traumatología), 3 aseguradoras y 8 códigos CIE-10
+- 3 médicos con horario de lunes a sábado (Torres, de lunes a viernes por la tarde)
 - 2 pacientes
-- 1 cita demo (`CJN-2026-0001`, estado `Confirmada`)
+- 1 cita demo (`CJN-2026-0001`, estado `Confirmada`) para el próximo día hábil a las 10:30
 
 ## Ejemplo rápido (cURL)
 
 ```bash
+# Iniciar sesión como recepción y guardar el token
+TOKEN=$(curl -s -X POST http://localhost:8080/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"recepcion","contrasena":"CitaSync2026"}' | jq -r .data.token)
+
 # Crear paciente
 curl -X POST http://localhost:8080/api/pacientes \
-  -H "Content-Type: application/json" \
-  -d "{\"tipoDocumento\":\"DNI\",\"numeroDocumento\":\"40000005\",\"nombres\":\"Ana Lucía\",\"apellidos\":\"Quispe Ramos\",\"tipoSeguro\":\"Particular\",\"activo\":true}"
+  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d '{"persona":{"tipoDocumento":"DNI","numeroDocumento":"40000005","nombres":"Ana Lucía","apellidos":"Quispe Ramos"}}'
 
-# Listar citas
-curl "http://localhost:8080/api/citas?page=0&size=20"
+# Registrar la llegada del paciente de la cita 1
+curl -X PATCH http://localhost:8080/api/citas/1/llegada -H "Authorization: Bearer $TOKEN"
 
-# Cambiar estado
-curl -X PATCH http://localhost:8080/api/citas/1/estado \
-  -H "Content-Type: application/json" \
-  -d "{\"estado\":\"EnTriaje\"}"
+# Ver quién hizo cada cambio de estado
+curl http://localhost:8080/api/citas/1/historial -H "Authorization: Bearer $TOKEN"
 ```
 
 ## Pruebas con Postman
 
 1. Importar la colección: [`postman/CitaSync_API_Tests.json`](postman/CitaSync_API_Tests.json)
 2. Verificar variable `baseUrl` = `http://localhost:8080`
-3. Ejecutar la colección (Runner) o cada request individualmente
-4. Para repetir la colección completa, reiniciar antes la API: las pruebas cambian los datos en memoria
+3. Ejecutar la colección completa con el Runner, en orden: la carpeta 00 inicia sesión con cada rol y guarda los tokens
+4. Para repetirla, reiniciar antes la API: las pruebas cambian los datos en memoria
 
-Casos incluidos: creación de paciente, datos inválidos (400), recurso inexistente (404), documento duplicado (409), listado de citas, cambio de estado, transición no permitida (422), reglas de negocio de la cita, cancelación y triaje.
+Son 59 solicitudes en 6 carpetas. Recorren el flujo completo: recepción, triaje, atención médica, pago y administración. Además prueban:
+
+- Respuestas 401 sin sesión y 403 cuando el rol no tiene permiso.
+- Que solo el médico asignado pueda atender la cita.
+- Reglas de horario y cruces de citas.
+- Pagos anulados y facturas.
+- Que cada registro guarde el usuario que lo creó o modificó.
 
 ## Notas académicas
 
 - Sin base de datos: los datos viven solo mientras el proceso está en ejecución.
-- Validaciones con Data Annotations (`[Required]`, `[StringLength]`, `[Range]`, `[EmailAddress]`, `[EnumDataType]`).
+- Validaciones con Data Annotations (`[Required]`, `[StringLength]`, `[Range]`, `[RegularExpression]`, `[EnumDataType]`) e `IValidatableObject` para reglas entre campos.
 - Excepciones centralizadas en `ExceptionMiddleware`.
-- Interfaces + DTOs + herencia OOP (`Persona` → `Paciente` / `Medico`).
+- El repositorio genérico es el único que llena los campos de auditoría, así ninguna tabla puede quedar sin ellos.
+- Contraseñas guardadas como hash (`PasswordHasher` de ASP.NET Core); la API nunca las devuelve.
+- La [exportación de Swagger](docs/swagger.json) corresponde a esta versión de la API.

@@ -6,15 +6,12 @@ namespace ClinicaJesusDelNorte.API.Models.DTOs;
 
 public class CrearCitaDto
 {
-    [Required(ErrorMessage = ValidationMessages.Obligatorio)]
     [Range(1, int.MaxValue, ErrorMessage = "Debe indicar un paciente válido.")]
     public int PacienteId { get; set; }
 
-    [Required(ErrorMessage = ValidationMessages.Obligatorio)]
     [Range(1, int.MaxValue, ErrorMessage = "Debe indicar un médico válido.")]
     public int MedicoId { get; set; }
 
-    [Required(ErrorMessage = ValidationMessages.Obligatorio)]
     [Range(1, int.MaxValue, ErrorMessage = "Debe indicar una especialidad válida.")]
     public int EspecialidadId { get; set; }
 
@@ -25,20 +22,15 @@ public class CrearCitaDto
     public string? MotivoConsulta { get; set; }
 }
 
+/// <summary>
+/// Reprogramación o corrección del motivo. El estado cambia por PATCH /estado o por el flujo clínico.
+/// </summary>
 public class ActualizarCitaDto
 {
-    [StringLength(500, ErrorMessage = ValidationMessages.LongitudMaxima)]
-    public string? MotivoConsulta { get; set; }
-
     public DateTime? FechaHoraCita { get; set; }
 
-    public DateTime? FechaHoraLlegada { get; set; }
-
-    [EnumDataType(typeof(EstadoCita), ErrorMessage = ValidationMessages.ValorNoPermitido)]
-    public EstadoCita? Estado { get; set; }
-
     [StringLength(500, ErrorMessage = ValidationMessages.LongitudMaxima)]
-    public string? ObservacionCancelacion { get; set; }
+    public string? MotivoConsulta { get; set; }
 }
 
 public class CambiarEstadoCitaDto
@@ -48,7 +40,7 @@ public class CambiarEstadoCitaDto
     public EstadoCita Estado { get; set; }
 
     [StringLength(500, ErrorMessage = ValidationMessages.LongitudMaxima)]
-    public string? ObservacionCancelacion { get; set; }
+    public string? Observacion { get; set; }
 }
 
 public class CancelarCitaDto
@@ -58,7 +50,7 @@ public class CancelarCitaDto
     public string ObservacionCancelacion { get; set; } = string.Empty;
 }
 
-public class CitaResponseDto
+public class CitaResponseDto : AuditoriaResponseDto
 {
     public int Id { get; set; }
     public string CodigoCita { get; set; } = string.Empty;
@@ -70,8 +62,17 @@ public class CitaResponseDto
     public string? EspecialidadNombre { get; set; }
     public DateTime FechaHoraCita { get; set; }
     public string? MotivoConsulta { get; set; }
+    public decimal PrecioConsulta { get; set; }
     public EstadoCita Estado { get; set; }
     public DateTime? FechaHoraLlegada { get; set; }
     public string? ObservacionCancelacion { get; set; }
-    public DateTime FechaRegistro { get; set; }
+}
+
+public class HistorialCitaResponseDto : AuditoriaResponseDto
+{
+    public int Id { get; set; }
+    public int CitaId { get; set; }
+    public EstadoCita? EstadoAnterior { get; set; }
+    public EstadoCita EstadoNuevo { get; set; }
+    public string? Observacion { get; set; }
 }

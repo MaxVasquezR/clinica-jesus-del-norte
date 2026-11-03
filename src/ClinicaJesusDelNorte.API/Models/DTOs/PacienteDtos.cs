@@ -4,93 +4,65 @@ using ClinicaJesusDelNorte.API.Models.Enums;
 
 namespace ClinicaJesusDelNorte.API.Models.DTOs;
 
-public class CrearPacienteDto
+public class CrearPacienteDto : IValidatableObject
 {
-    [Required(ErrorMessage = "El tipo de documento es obligatorio.")]
-    [EnumDataType(typeof(TipoDocumento), ErrorMessage = ValidationMessages.ValorNoPermitido)]
-    public TipoDocumento TipoDocumento { get; set; }
-
-    [Required(ErrorMessage = "El número de documento es obligatorio.")]
-    [StringLength(15, MinimumLength = 5, ErrorMessage = "El número de documento debe tener entre 5 y 15 caracteres.")]
-    public string NumeroDocumento { get; set; } = string.Empty;
-
-    [Required(ErrorMessage = "Los nombres son obligatorios.")]
-    [StringLength(100, MinimumLength = 2, ErrorMessage = ValidationMessages.LongitudRango)]
-    public string Nombres { get; set; } = string.Empty;
-
-    [Required(ErrorMessage = "Los apellidos son obligatorios.")]
-    [StringLength(100, MinimumLength = 2, ErrorMessage = ValidationMessages.LongitudRango)]
-    public string Apellidos { get; set; } = string.Empty;
-
-    public DateTime? FechaNacimiento { get; set; }
-
-    [StringLength(20, ErrorMessage = ValidationMessages.LongitudMaxima)]
-    public string? Telefono { get; set; }
-
-    [EmailAddress(ErrorMessage = "El correo electrónico no es válido.")]
-    [StringLength(120, ErrorMessage = ValidationMessages.LongitudMaxima)]
-    public string? Email { get; set; }
-
-    [StringLength(200, ErrorMessage = ValidationMessages.LongitudMaxima)]
-    public string? Direccion { get; set; }
-
     [Required(ErrorMessage = ValidationMessages.Obligatorio)]
-    [EnumDataType(typeof(TipoSeguro), ErrorMessage = ValidationMessages.ValorNoPermitido)]
-    public TipoSeguro TipoSeguro { get; set; } = TipoSeguro.Particular;
+    public DatosPersonaDto Persona { get; set; } = new();
+
+    [Range(1, int.MaxValue, ErrorMessage = "Debe indicar una aseguradora válida.")]
+    public int? AseguradoraId { get; set; }
 
     [StringLength(40, ErrorMessage = ValidationMessages.LongitudMaxima)]
     public string? NumeroPoliza { get; set; }
 
+    [StringLength(500, ErrorMessage = ValidationMessages.LongitudMaxima)]
+    public string? Alergias { get; set; }
+
     public bool Activo { get; set; } = true;
+
+    public IEnumerable<ValidationResult> Validate(ValidationContext validationContext) =>
+        PacienteReglas.Poliza(AseguradoraId, NumeroPoliza);
 }
 
-public class ActualizarPacienteDto
+public class ActualizarPacienteDto : IValidatableObject
 {
     [Required(ErrorMessage = ValidationMessages.Obligatorio)]
-    [StringLength(100, MinimumLength = 2, ErrorMessage = ValidationMessages.LongitudRango)]
-    public string Nombres { get; set; } = string.Empty;
+    public ActualizarPersonaDto Persona { get; set; } = new();
 
-    [Required(ErrorMessage = ValidationMessages.Obligatorio)]
-    [StringLength(100, MinimumLength = 2, ErrorMessage = ValidationMessages.LongitudRango)]
-    public string Apellidos { get; set; } = string.Empty;
-
-    public DateTime? FechaNacimiento { get; set; }
-
-    [StringLength(20, ErrorMessage = ValidationMessages.LongitudMaxima)]
-    public string? Telefono { get; set; }
-
-    [EmailAddress(ErrorMessage = ValidationMessages.Correo)]
-    [StringLength(120, ErrorMessage = ValidationMessages.LongitudMaxima)]
-    public string? Email { get; set; }
-
-    [StringLength(200, ErrorMessage = ValidationMessages.LongitudMaxima)]
-    public string? Direccion { get; set; }
-
-    [Required(ErrorMessage = ValidationMessages.Obligatorio)]
-    [EnumDataType(typeof(TipoSeguro), ErrorMessage = ValidationMessages.ValorNoPermitido)]
-    public TipoSeguro TipoSeguro { get; set; }
+    [Range(1, int.MaxValue, ErrorMessage = "Debe indicar una aseguradora válida.")]
+    public int? AseguradoraId { get; set; }
 
     [StringLength(40, ErrorMessage = ValidationMessages.LongitudMaxima)]
     public string? NumeroPoliza { get; set; }
 
+    [StringLength(500, ErrorMessage = ValidationMessages.LongitudMaxima)]
+    public string? Alergias { get; set; }
+
     public bool Activo { get; set; } = true;
+
+    public IEnumerable<ValidationResult> Validate(ValidationContext validationContext) =>
+        PacienteReglas.Poliza(AseguradoraId, NumeroPoliza);
 }
 
-public class PacienteResponseDto
+internal static class PacienteReglas
+{
+    public static IEnumerable<ValidationResult> Poliza(int? aseguradoraId, string? numeroPoliza)
+    {
+        if (aseguradoraId.HasValue && string.IsNullOrWhiteSpace(numeroPoliza))
+        {
+            yield return new ValidationResult("El número de póliza es obligatorio si el paciente tiene aseguradora.", [nameof(numeroPoliza)]);
+        }
+    }
+}
+
+public class PacienteResponseDto : AuditoriaResponseDto
 {
     public int Id { get; set; }
     public string CodigoPaciente { get; set; } = string.Empty;
-    public TipoDocumento TipoDocumento { get; set; }
-    public string NumeroDocumento { get; set; } = string.Empty;
-    public string Nombres { get; set; } = string.Empty;
-    public string Apellidos { get; set; } = string.Empty;
-    public string NombreCompleto { get; set; } = string.Empty;
-    public DateTime? FechaNacimiento { get; set; }
-    public string? Telefono { get; set; }
-    public string? Email { get; set; }
-    public string? Direccion { get; set; }
-    public TipoSeguro TipoSeguro { get; set; }
+    public int? AseguradoraId { get; set; }
+    public string? AseguradoraNombre { get; set; }
     public string? NumeroPoliza { get; set; }
+    public string? Alergias { get; set; }
     public bool Activo { get; set; }
-    public DateTime FechaRegistro { get; set; }
+    public PersonaResponseDto Persona { get; set; } = new();
 }

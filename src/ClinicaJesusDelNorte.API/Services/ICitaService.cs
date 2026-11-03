@@ -12,14 +12,6 @@ public interface ICitaService
     CitaResponseDto Actualizar(int id, ActualizarCitaDto dto);
     CitaResponseDto CambiarEstado(int id, CambiarEstadoCitaDto dto);
     CitaResponseDto Cancelar(int id, CancelarCitaDto dto);
-
-    TriajeResponseDto RegistrarTriaje(int citaId, CrearTriajeDto dto);
-    TriajeResponseDto ObtenerTriaje(int citaId);
-
-    AtencionResponseDto RegistrarAtencion(int citaId, CrearAtencionDto dto);
-    AtencionResponseDto ActualizarAtencion(int citaId, ActualizarAtencionDto dto);
-    AtencionResponseDto ObtenerAtencion(int citaId);
-
-    PagoResponseDto RegistrarPago(int citaId, CrearPagoDto dto);
-    PagoResponseDto ObtenerPago(int citaId);
+    CitaResponseDto RegistrarLlegada(int id);
+    IReadOnlyList<HistorialCitaResponseDto> Historial(int id);
 }

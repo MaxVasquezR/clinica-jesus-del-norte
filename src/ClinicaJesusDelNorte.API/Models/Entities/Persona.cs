@@ -3,22 +3,19 @@ using ClinicaJesusDelNorte.API.Models.Enums;
 namespace ClinicaJesusDelNorte.API.Models.Entities;
 
 /// <summary>
-/// Clase base abstracta que representa los datos demográficos compartidos
-/// entre pacientes y médicos (abstracción y reutilización OOP).
+/// Datos demográficos de cualquier persona: paciente, médico o personal.
 /// </summary>
-public abstract class Persona
+public class Persona : EntidadAuditable
 {
-    public int Id { get; set; }
     public TipoDocumento TipoDocumento { get; set; }
     public string NumeroDocumento { get; set; } = string.Empty;
     public string Nombres { get; set; } = string.Empty;
     public string Apellidos { get; set; } = string.Empty;
     public DateTime? FechaNacimiento { get; set; }
+    public Sexo? Sexo { get; set; }
     public string? Telefono { get; set; }
     public string? Email { get; set; }
     public string? Direccion { get; set; }
-    public bool Activo { get; set; } = true;
-    public DateTime FechaRegistro { get; set; } = DateTime.UtcNow;
 
     public string NombreCompleto => $"{Nombres} {Apellidos}".Trim();
 }

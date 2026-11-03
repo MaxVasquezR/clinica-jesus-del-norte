@@ -1,13 +1,19 @@
 using ClinicaJesusDelNorte.API.Models.Common;
 using ClinicaJesusDelNorte.API.Models.DTOs;
+using ClinicaJesusDelNorte.API.Seguridad;
 using ClinicaJesusDelNorte.API.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ClinicaJesusDelNorte.API.Controllers;
 
+/// <summary>
+/// Especialidades: lectura para todo el personal; registro y cambios solo Administrador.
+/// </summary>
 [ApiController]
 [Route("api/especialidades")]
 [Produces("application/json")]
+[Authorize]
 public class EspecialidadesController : ControllerBase
 {
     private readonly IEspecialidadService _service;
@@ -17,9 +23,10 @@ public class EspecialidadesController : ControllerBase
         _service = service;
     }
 
-    /// <summary>Lista especialidades con paginación.</summary>
+    /// <summary>Lista paginada de especialidades.</summary>
     [HttpGet]
     [ProducesResponseType(typeof(ApiResponse<PagedResult<EspecialidadResponseDto>>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status401Unauthorized)]
     public ActionResult<ApiResponse<PagedResult<EspecialidadResponseDto>>> GetAll(
         [FromQuery] int page = 0,
         [FromQuery] int size = 20)
@@ -31,6 +38,7 @@ public class EspecialidadesController : ControllerBase
     /// <summary>Obtiene una especialidad por ID.</summary>
     [HttpGet("{id:int}")]
     [ProducesResponseType(typeof(ApiResponse<EspecialidadResponseDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
     public ActionResult<ApiResponse<EspecialidadResponseDto>> GetById(int id)
     {
@@ -38,10 +46,13 @@ public class EspecialidadesController : ControllerBase
         return Ok(ApiResponse<EspecialidadResponseDto>.Ok(data));
     }
 
-    /// <summary>Registra una especialidad.</summary>
+    /// <summary>Registra una especialidad. Rol: Administrador.</summary>
     [HttpPost]
+    [Authorize(Roles = Roles.Administrador)]
     [ProducesResponseType(typeof(ApiResponse<EspecialidadResponseDto>), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status409Conflict)]
     public ActionResult<ApiResponse<EspecialidadResponseDto>> Create([FromBody] CrearEspecialidadDto dto)
     {
@@ -50,10 +61,13 @@ public class EspecialidadesController : ControllerBase
             ApiResponse<EspecialidadResponseDto>.Ok(data, "Especialidad registrada correctamente."));
     }
 
-    /// <summary>Actualiza una especialidad.</summary>
+    /// <summary>Actualiza una especialidad. Rol: Administrador.</summary>
     [HttpPut("{id:int}")]
+    [Authorize(Roles = Roles.Administrador)]
     [ProducesResponseType(typeof(ApiResponse<EspecialidadResponseDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status409Conflict)]
     public ActionResult<ApiResponse<EspecialidadResponseDto>> Update(int id, [FromBody] ActualizarEspecialidadDto dto)
@@ -62,9 +76,12 @@ public class EspecialidadesController : ControllerBase
         return Ok(ApiResponse<EspecialidadResponseDto>.Ok(data, "Especialidad actualizada correctamente."));
     }
 
-    /// <summary>Da de baja lógica a una especialidad.</summary>
+    /// <summary>Baja lógica (Activo = false). Rol: Administrador.</summary>
     [HttpDelete("{id:int}")]
+    [Authorize(Roles = Roles.Administrador)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
     public ActionResult<ApiResponse<object>> Delete(int id)
     {
