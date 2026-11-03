@@ -9,379 +9,220 @@ namespace ClinicaJesusDelNorte.API.Services;
 
 public class CitaService : ICitaService
 {
-    private readonly ICitaRepository _citaRepository;
-    private readonly IPacienteRepository _pacienteRepository;
-    private readonly IMedicoRepository _medicoRepository;
-    private readonly IEspecialidadRepository _especialidadRepository;
-
-    private static readonly Dictionary<EstadoCita, HashSet<EstadoCita>> TransicionesPermitidas = new()
+    // Estados que solo asigna el flujo clínico, nunca un PATCH manual.
+    private static readonly Dictionary<EstadoCita, string> EstadosDelFlujo = new()
     {
-        [EstadoCita.Solicitada] = [EstadoCita.Confirmada, EstadoCita.Cancelada],
-        [EstadoCita.Confirmada] = [EstadoCita.EnTriaje, EstadoCita.Cancelada, EstadoCita.NoAsistio],
-        [EstadoCita.EnTriaje] = [EstadoCita.EnAtencion, EstadoCita.Cancelada],
-        [EstadoCita.EnAtencion] = [EstadoCita.Finalizada, EstadoCita.Cancelada],
-        [EstadoCita.Finalizada] = [],
-        [EstadoCita.Cancelada] = [],
-        [EstadoCita.NoAsistio] = []
+        [EstadoCita.EnTriaje] = "Se asigna al registrar el triaje.",
+        [EstadoCita.EnAtencion] = "Se asigna cuando el médico inicia la atención.",
+        [EstadoCita.Finalizada] = "Se asigna cuando el médico completa la atención."
     };
 
+    private readonly IRepositorio<CitaMedica> _citas;
+    private readonly IRepositorio<HistorialCita> _historial;
+    private readonly IRepositorio<Paciente> _pacientes;
+    private readonly IRepositorio<Medico> _medicos;
+    private readonly IRepositorio<Especialidad> _especialidades;
+    private readonly IRepositorio<MedicoEspecialidad> _medicoEspecialidades;
+    private readonly IRepositorio<HorarioMedico> _horarios;
+    private readonly IRepositorio<Persona> _personas;
+    private readonly CitaFlujo _flujo;
+    private readonly Secuencias _secuencias;
+
     public CitaService(
-        ICitaRepository citaRepository,
-        IPacienteRepository pacienteRepository,
-        IMedicoRepository medicoRepository,
-        IEspecialidadRepository especialidadRepository)
+        IRepositorio<CitaMedica> citas,
+        IRepositorio<HistorialCita> historial,
+        IRepositorio<Paciente> pacientes,
+        IRepositorio<Medico> medicos,
+        IRepositorio<Especialidad> especialidades,
+        IRepositorio<MedicoEspecialidad> medicoEspecialidades,
+        IRepositorio<HorarioMedico> horarios,
+        IRepositorio<Persona> personas,
+        CitaFlujo flujo,
+        Secuencias secuencias)
     {
-        _citaRepository = citaRepository;
-        _pacienteRepository = pacienteRepository;
-        _medicoRepository = medicoRepository;
-        _especialidadRepository = especialidadRepository;
+        _citas = citas;
+        _historial = historial;
+        _pacientes = pacientes;
+        _medicos = medicos;
+        _especialidades = especialidades;
+        _medicoEspecialidades = medicoEspecialidades;
+        _horarios = horarios;
+        _personas = personas;
+        _flujo = flujo;
+        _secuencias = secuencias;
     }
 
     public PagedResult<CitaResponseDto> Listar(int page, int size, EstadoCita? estado, int? medicoId, int? pacienteId)
     {
-        var query = _citaRepository.GetAll().AsEnumerable();
+        var citas = _citas.Find(c =>
+                (!estado.HasValue || c.Estado == estado.Value) &&
+                (!medicoId.HasValue || c.MedicoId == medicoId.Value) &&
+                (!pacienteId.HasValue || c.PacienteId == pacienteId.Value))
+            .OrderByDescending(c => c.FechaHoraCita)
+            .ToList();
 
-        if (estado.HasValue)
-            query = query.Where(c => c.Estado == estado.Value);
-        if (medicoId.HasValue)
-            query = query.Where(c => c.MedicoId == medicoId.Value);
-        if (pacienteId.HasValue)
-            query = query.Where(c => c.PacienteId == pacienteId.Value);
-
-        return Paginador.Crear(query.ToList(), page, size, Map);
+        return Paginador.Crear(citas, page, size, Map);
     }
 
     public CitaResponseDto ObtenerPorId(int id)
     {
-        var cita = ObtenerCita(id);
-        return Map(cita);
+        return Map(_flujo.Obtener(id));
     }
 
     public CitaResponseDto Crear(CrearCitaDto dto)
     {
         ValidarParticipantes(dto.PacienteId, dto.MedicoId, dto.EspecialidadId);
-
-        if (dto.FechaHoraCita <= DateTime.Now)
-        {
-            throw new BusinessException("La fecha y hora de la cita debe ser futura.");
-        }
-
-        if (_citaRepository.ExistsOverlap(dto.MedicoId, dto.FechaHoraCita))
-        {
-            throw new ConflictException("El médico ya tiene una cita en ese horario (posible overbooking).");
-        }
+        ValidarHorario(dto.MedicoId, dto.FechaHoraCita, null);
 
         var cita = new CitaMedica
         {
+            CodigoCita = $"CJN-{DateTime.Now:yyyy}-{_secuencias.Siguiente("cita"):D4}",
             PacienteId = dto.PacienteId,
             MedicoId = dto.MedicoId,
             EspecialidadId = dto.EspecialidadId,
             FechaHoraCita = dto.FechaHoraCita,
-            MotivoConsulta = dto.MotivoConsulta,
-            Estado = EstadoCita.Confirmada
+            MotivoConsulta = Texto.Limpiar(dto.MotivoConsulta),
+            PrecioConsulta = _especialidades.GetById(dto.EspecialidadId)!.PrecioBase,
+            Estado = EstadoCita.Solicitada
         };
 
-        return Map(_citaRepository.Add(cita));
+        return Map(_flujo.Registrar(cita));
     }
 
     public CitaResponseDto Actualizar(int id, ActualizarCitaDto dto)
     {
-        var cita = ObtenerCita(id);
+        var cita = _flujo.Obtener(id);
 
-        if (cita.Estado is EstadoCita.Finalizada or EstadoCita.Cancelada or EstadoCita.NoAsistio)
-        {
-            throw new BusinessException($"No se puede modificar una cita en estado {cita.Estado}.");
-        }
+        if (cita.Estado is not (EstadoCita.Solicitada or EstadoCita.Confirmada) || cita.FechaHoraLlegada is not null)
+            throw new BusinessException("Solo se reprograma una cita Solicitada o Confirmada antes de la llegada del paciente.");
 
         if (dto.FechaHoraCita.HasValue)
         {
-            if (dto.FechaHoraCita.Value <= DateTime.Now)
-            {
-                throw new BusinessException("La fecha y hora de la cita debe ser futura.");
-            }
-
-            if (_citaRepository.ExistsOverlap(cita.MedicoId, dto.FechaHoraCita.Value, cita.Id))
-            {
-                throw new ConflictException("El médico ya tiene una cita en ese horario.");
-            }
-        }
-
-        // La transición se valida antes de asignar los demás campos para no dejar cambios parciales.
-        if (dto.Estado.HasValue)
-        {
-            AplicarTransicion(cita, dto.Estado.Value, dto.ObservacionCancelacion);
-        }
-
-        if (dto.FechaHoraCita.HasValue)
+            ValidarHorario(cita.MedicoId, dto.FechaHoraCita.Value, cita.Id);
             cita.FechaHoraCita = dto.FechaHoraCita.Value;
+        }
 
         if (dto.MotivoConsulta is not null)
-            cita.MotivoConsulta = dto.MotivoConsulta;
+            cita.MotivoConsulta = Texto.Limpiar(dto.MotivoConsulta);
 
-        if (dto.FechaHoraLlegada.HasValue)
-            cita.FechaHoraLlegada = dto.FechaHoraLlegada;
-
-        return Map(_citaRepository.Update(cita));
+        return Map(_citas.Update(cita));
     }
 
     public CitaResponseDto CambiarEstado(int id, CambiarEstadoCitaDto dto)
     {
-        var cita = ObtenerCita(id);
-        AplicarTransicion(cita, dto.Estado, dto.ObservacionCancelacion);
-        return Map(_citaRepository.Update(cita));
+        var cita = _flujo.Obtener(id);
+
+        if (EstadosDelFlujo.TryGetValue(dto.Estado, out var motivo))
+            throw new BusinessException($"El estado {dto.Estado} no se asigna a mano. {motivo}");
+
+        if (dto.Estado == EstadoCita.NoAsistio && cita.FechaHoraLlegada is not null)
+            throw new BusinessException("El paciente ya llegó: no se puede marcar como NoAsistio.");
+
+        _flujo.CambiarEstado(cita, dto.Estado, dto.Observacion);
+        return Map(cita);
     }
 
     public CitaResponseDto Cancelar(int id, CancelarCitaDto dto)
     {
-        var cita = ObtenerCita(id);
-        AplicarTransicion(cita, EstadoCita.Cancelada, dto.ObservacionCancelacion);
-        return Map(_citaRepository.Update(cita));
+        var cita = _flujo.Obtener(id);
+        _flujo.CambiarEstado(cita, EstadoCita.Cancelada, dto.ObservacionCancelacion);
+        return Map(cita);
     }
 
-    public TriajeResponseDto RegistrarTriaje(int citaId, CrearTriajeDto dto)
+    public CitaResponseDto RegistrarLlegada(int id)
     {
-        var cita = ObtenerCita(citaId);
+        var cita = _flujo.Obtener(id);
 
-        if (cita.Estado is not (EstadoCita.Confirmada or EstadoCita.EnTriaje))
-        {
-            throw new BusinessException("Solo se puede registrar triaje en citas Confirmada o EnTriaje.");
-        }
+        if (cita.Estado != EstadoCita.Confirmada)
+            throw new BusinessException($"Solo se registra la llegada de una cita Confirmada (estado actual: {cita.Estado}).");
+        if (cita.FechaHoraLlegada is not null)
+            throw new ConflictException($"La llegada ya se registró a las {cita.FechaHoraLlegada:HH:mm}.");
 
-        if (_citaRepository.GetTriajeByCitaId(citaId) is not null)
-        {
-            throw new ConflictException("La cita ya tiene un triaje registrado.");
-        }
-
-        var triaje = new Triaje
-        {
-            CitaId = citaId,
-            Sintomas = dto.Sintomas,
-            PresionArterial = dto.PresionArterial,
-            FrecuenciaCardiaca = dto.FrecuenciaCardiaca,
-            Temperatura = dto.Temperatura,
-            PesoKg = dto.PesoKg,
-            TallaCm = dto.TallaCm,
-            Prioridad = dto.Prioridad
-        };
-
-        cita.Estado = EstadoCita.EnTriaje;
-        cita.FechaHoraLlegada ??= DateTime.UtcNow;
-        _citaRepository.Update(cita);
-
-        return MapTriaje(_citaRepository.AddTriaje(triaje));
+        cita.FechaHoraLlegada = DateTime.Now;
+        return Map(_citas.Update(cita));
     }
 
-    public TriajeResponseDto ObtenerTriaje(int citaId)
+    public IReadOnlyList<HistorialCitaResponseDto> Historial(int id)
     {
-        ObtenerCita(citaId);
-        var triaje = _citaRepository.GetTriajeByCitaId(citaId)
-            ?? throw new NotFoundException($"No existe triaje para la cita {citaId}.");
-        return MapTriaje(triaje);
+        _flujo.Obtener(id);
+        return _historial.Find(h => h.CitaId == id).Select(h => new HistorialCitaResponseDto
+        {
+            Id = h.Id,
+            CitaId = h.CitaId,
+            EstadoAnterior = h.EstadoAnterior,
+            EstadoNuevo = h.EstadoNuevo,
+            Observacion = h.Observacion
+        }.ConAuditoria(h)).ToList();
     }
-
-    public AtencionResponseDto RegistrarAtencion(int citaId, CrearAtencionDto dto)
-    {
-        var cita = ObtenerCita(citaId);
-
-        if (cita.Estado is not (EstadoCita.EnTriaje or EstadoCita.EnAtencion))
-        {
-            throw new BusinessException("La atención requiere que la cita esté en EnTriaje o EnAtencion.");
-        }
-
-        if (_citaRepository.GetAtencionByCitaId(citaId) is not null)
-        {
-            throw new ConflictException("La cita ya tiene una atención registrada.");
-        }
-
-        var atencion = new AtencionMedica
-        {
-            CitaId = citaId,
-            DiagnosticoCIE10 = dto.DiagnosticoCIE10,
-            Evolucion = dto.Evolucion,
-            Tratamiento = dto.Tratamiento,
-            RecetaIndicaciones = dto.RecetaIndicaciones,
-            Estado = dto.Estado
-        };
-
-        cita.Estado = EstadoCita.EnAtencion;
-
-        if (dto.Estado == EstadoAtencion.Completada)
-        {
-            AplicarTransicion(cita, EstadoCita.Finalizada, null);
-        }
-
-        _citaRepository.Update(cita);
-
-        return MapAtencion(_citaRepository.AddAtencion(atencion));
-    }
-
-    public AtencionResponseDto ActualizarAtencion(int citaId, ActualizarAtencionDto dto)
-    {
-        var cita = ObtenerCita(citaId);
-        var atencion = _citaRepository.GetAtencionByCitaId(citaId)
-            ?? throw new NotFoundException($"No existe atención para la cita {citaId}.");
-
-        if (cita.Estado != EstadoCita.EnAtencion)
-        {
-            throw new BusinessException($"No se puede actualizar la atención de una cita en estado {cita.Estado}.");
-        }
-
-        atencion.DiagnosticoCIE10 = dto.DiagnosticoCIE10;
-        atencion.Evolucion = dto.Evolucion;
-        atencion.Tratamiento = dto.Tratamiento;
-        atencion.RecetaIndicaciones = dto.RecetaIndicaciones;
-        atencion.Estado = dto.Estado;
-
-        if (dto.Estado == EstadoAtencion.Completada)
-        {
-            AplicarTransicion(cita, EstadoCita.Finalizada, null);
-            _citaRepository.Update(cita);
-        }
-
-        return MapAtencion(_citaRepository.UpdateAtencion(atencion));
-    }
-
-    public AtencionResponseDto ObtenerAtencion(int citaId)
-    {
-        ObtenerCita(citaId);
-        var atencion = _citaRepository.GetAtencionByCitaId(citaId)
-            ?? throw new NotFoundException($"No existe atención para la cita {citaId}.");
-        return MapAtencion(atencion);
-    }
-
-    public PagoResponseDto RegistrarPago(int citaId, CrearPagoDto dto)
-    {
-        var cita = ObtenerCita(citaId);
-
-        if (cita.Estado is EstadoCita.Cancelada or EstadoCita.NoAsistio)
-        {
-            throw new BusinessException($"No se puede registrar el pago de una cita en estado {cita.Estado}.");
-        }
-
-        if (_citaRepository.GetPagoByCitaId(citaId) is not null)
-        {
-            throw new ConflictException("La cita ya tiene un pago registrado.");
-        }
-
-        var pago = new PagoTransaccion
-        {
-            CitaId = citaId,
-            MontoTotal = dto.MontoTotal,
-            MetodoPago = dto.MetodoPago,
-            EstadoPago = dto.EstadoPago
-        };
-
-        return MapPago(_citaRepository.AddPago(pago));
-    }
-
-    public PagoResponseDto ObtenerPago(int citaId)
-    {
-        ObtenerCita(citaId);
-        var pago = _citaRepository.GetPagoByCitaId(citaId)
-            ?? throw new NotFoundException($"No existe pago para la cita {citaId}.");
-        return MapPago(pago);
-    }
-
-    private CitaMedica ObtenerCita(int id) =>
-        _citaRepository.GetById(id)
-        ?? throw new NotFoundException($"No se encontró la cita con ID {id}.");
 
     private void ValidarParticipantes(int pacienteId, int medicoId, int especialidadId)
     {
-        var paciente = _pacienteRepository.GetById(pacienteId);
+        var paciente = _pacientes.GetById(pacienteId);
         if (paciente is null || !paciente.Activo)
             throw new BusinessException($"El paciente con ID {pacienteId} no existe o está inactivo.");
 
-        var medico = _medicoRepository.GetById(medicoId);
+        var medico = _medicos.GetById(medicoId);
         if (medico is null || !medico.Activo)
             throw new BusinessException($"El médico con ID {medicoId} no existe o está inactivo.");
 
-        if (medico.EspecialidadId != especialidadId)
-            throw new BusinessException($"El médico con ID {medicoId} no atiende la especialidad con ID {especialidadId}.");
-
-        var especialidad = _especialidadRepository.GetById(especialidadId);
+        var especialidad = _especialidades.GetById(especialidadId);
         if (especialidad is null || !especialidad.Activo)
             throw new BusinessException($"La especialidad con ID {especialidadId} no existe o está inactiva.");
+
+        if (!_medicoEspecialidades.Any(me => me.MedicoId == medicoId && me.EspecialidadId == especialidadId && me.Activo))
+            throw new BusinessException($"El médico con ID {medicoId} no atiende la especialidad con ID {especialidadId}.");
     }
 
-    private static void AplicarTransicion(CitaMedica cita, EstadoCita nuevoEstado, string? observacionCancelacion)
+    // La cita debe caer dentro de un bloque activo del médico y no cruzarse con otra de sus citas.
+    private void ValidarHorario(int medicoId, DateTime fechaHora, int? excluirCitaId)
     {
-        if (!TransicionesPermitidas.TryGetValue(cita.Estado, out var permitidos) || !permitidos.Contains(nuevoEstado))
-        {
-            throw new BusinessException($"No se permite la transición de {cita.Estado} a {nuevoEstado}.");
-        }
+        if (fechaHora <= DateTime.Now)
+            throw new BusinessException("La fecha y hora de la cita debe ser futura.");
 
-        if (nuevoEstado == EstadoCita.Cancelada)
-        {
-            if (string.IsNullOrWhiteSpace(observacionCancelacion))
-            {
-                throw new BusinessException("La observación de cancelación es obligatoria.");
-            }
-            cita.ObservacionCancelacion = observacionCancelacion.Trim();
-        }
+        var horario = BuscarHorario(medicoId, fechaHora)
+            ?? throw new BusinessException(
+                $"El médico no atiende el {Horas.DiaDe(fechaHora)} a las {fechaHora:HH:mm}. Revise su horario en GET /api/medicos/{medicoId}/horarios.");
 
-        cita.Estado = nuevoEstado;
+        var inicio = fechaHora;
+        var fin = fechaHora.AddMinutes(horario.DuracionCitaMinutos);
+        var cruce = _citas.FirstOrDefault(c =>
+            c.MedicoId == medicoId && c.Id != excluirCitaId &&
+            c.Estado is not (EstadoCita.Cancelada or EstadoCita.NoAsistio) &&
+            inicio < c.FechaHoraCita.AddMinutes(BuscarHorario(medicoId, c.FechaHoraCita)?.DuracionCitaMinutos ?? horario.DuracionCitaMinutos) &&
+            fin > c.FechaHoraCita);
+
+        if (cruce is not null)
+            throw new ConflictException($"El médico ya tiene la cita {cruce.CodigoCita} a las {cruce.FechaHoraCita:HH:mm} (posible overbooking).");
     }
 
-    private CitaResponseDto Map(CitaMedica c)
+    private HorarioMedico? BuscarHorario(int medicoId, DateTime fechaHora)
     {
-        var paciente = _pacienteRepository.GetById(c.PacienteId);
-        var medico = _medicoRepository.GetById(c.MedicoId);
-        var especialidad = _especialidadRepository.GetById(c.EspecialidadId);
-
-        return new CitaResponseDto
-        {
-            Id = c.Id,
-            CodigoCita = c.CodigoCita,
-            PacienteId = c.PacienteId,
-            PacienteNombre = paciente?.NombreCompleto,
-            MedicoId = c.MedicoId,
-            MedicoNombre = medico?.NombreCompleto,
-            EspecialidadId = c.EspecialidadId,
-            EspecialidadNombre = especialidad?.Nombre,
-            FechaHoraCita = c.FechaHoraCita,
-            MotivoConsulta = c.MotivoConsulta,
-            Estado = c.Estado,
-            FechaHoraLlegada = c.FechaHoraLlegada,
-            ObservacionCancelacion = c.ObservacionCancelacion,
-            FechaRegistro = c.FechaRegistro
-        };
+        var dia = Horas.DiaDe(fechaHora);
+        var minuto = fechaHora.Hour * 60 + fechaHora.Minute;
+        return _horarios.FirstOrDefault(h =>
+            h.MedicoId == medicoId && h.Activo && h.DiaSemana == dia &&
+            Horas.Minutos(Horas.Parse(h.HoraInicio)) <= minuto &&
+            minuto + h.DuracionCitaMinutos <= Horas.Minutos(Horas.Parse(h.HoraFin)));
     }
 
-    private static TriajeResponseDto MapTriaje(Triaje t) => new()
-    {
-        Id = t.Id,
-        CitaId = t.CitaId,
-        FechaHoraTriaje = t.FechaHoraTriaje,
-        Sintomas = t.Sintomas,
-        PresionArterial = t.PresionArterial,
-        FrecuenciaCardiaca = t.FrecuenciaCardiaca,
-        Temperatura = t.Temperatura,
-        PesoKg = t.PesoKg,
-        TallaCm = t.TallaCm,
-        Prioridad = t.Prioridad
-    };
+    private string? NombrePersona(int? personaId) =>
+        personaId is int id ? _personas.GetById(id)?.NombreCompleto : null;
 
-    private static AtencionResponseDto MapAtencion(AtencionMedica a) => new()
+    private CitaResponseDto Map(CitaMedica c) => new CitaResponseDto
     {
-        Id = a.Id,
-        CitaId = a.CitaId,
-        FechaHoraInicio = a.FechaHoraInicio,
-        DiagnosticoCIE10 = a.DiagnosticoCIE10,
-        Evolucion = a.Evolucion,
-        Tratamiento = a.Tratamiento,
-        RecetaIndicaciones = a.RecetaIndicaciones,
-        Estado = a.Estado
-    };
-
-    private static PagoResponseDto MapPago(PagoTransaccion p) => new()
-    {
-        Id = p.Id,
-        CitaId = p.CitaId,
-        CodigoTransaccion = p.CodigoTransaccion,
-        MontoTotal = p.MontoTotal,
-        MetodoPago = p.MetodoPago,
-        EstadoPago = p.EstadoPago,
-        FechaHoraPago = p.FechaHoraPago
-    };
+        Id = c.Id,
+        CodigoCita = c.CodigoCita,
+        PacienteId = c.PacienteId,
+        PacienteNombre = NombrePersona(_pacientes.GetById(c.PacienteId)?.PersonaId),
+        MedicoId = c.MedicoId,
+        MedicoNombre = NombrePersona(_medicos.GetById(c.MedicoId)?.PersonaId),
+        EspecialidadId = c.EspecialidadId,
+        EspecialidadNombre = _especialidades.GetById(c.EspecialidadId)?.Nombre,
+        FechaHoraCita = c.FechaHoraCita,
+        MotivoConsulta = c.MotivoConsulta,
+        PrecioConsulta = c.PrecioConsulta,
+        Estado = c.Estado,
+        FechaHoraLlegada = c.FechaHoraLlegada,
+        ObservacionCancelacion = c.ObservacionCancelacion
+    }.ConAuditoria(c);
 }

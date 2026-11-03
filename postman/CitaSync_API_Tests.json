@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "CitaSync API — Clínica Jesús del Norte",
-    "description": "Colección de pruebas funcionales para la API RESTful CitaSync.\nCurso: Desarrollo de Servicios Web — IDAT 2026\n\nAntes de ejecutar: inicia la API en http://localhost:8080.\nLa colección cambia los datos en memoria. Para repetirla completa, reinicia la API primero.",
+    "description": "Pruebas funcionales de la API CitaSync con login JWT por rol.\nCurso: Desarrollo de Servicios Web — IDAT 2026\n\nAntes de ejecutar: inicia la API en http://localhost:8080.\nEjecuta la colección en orden (Runner): cada carpeta usa los tokens y los IDs de la anterior.\nLa colección cambia los datos en memoria. Para repetirla completa, reinicia la API primero.\n\nUsuarios de demostración (contraseña CitaSync2026): admin, recepcion, enfermeria, cmendoza, jsalazar, caja.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -10,34 +10,78 @@
       "value": "http://localhost:8080"
     },
     {
+      "key": "contrasena",
+      "value": "CitaSync2026"
+    },
+    {
       "key": "citaId",
       "value": "1"
     },
     {
+      "key": "tokenRecepcion",
+      "value": ""
+    },
+    {
+      "key": "tokenEnfermeria",
+      "value": ""
+    },
+    {
+      "key": "tokenMedico",
+      "value": ""
+    },
+    {
+      "key": "tokenOtroMedico",
+      "value": ""
+    },
+    {
+      "key": "tokenCaja",
+      "value": ""
+    },
+    {
+      "key": "tokenAdmin",
+      "value": ""
+    },
+    {
       "key": "citaIdNueva",
-      "value": "2"
+      "value": ""
+    },
+    {
+      "key": "pagoId",
+      "value": ""
+    },
+    {
+      "key": "fechaCita",
+      "value": ""
+    },
+    {
+      "key": "fechaFueraDeHorario",
+      "value": ""
     }
   ],
   "item": [
     {
-      "name": "01 - Pacientes",
+      "name": "00 - Autenticación y roles",
       "item": [
         {
-          "name": "TC01 - Crear paciente (POST)",
+          "name": "TC00a - Login Recepción",
           "event": [
             {
               "listen": "test",
               "script": {
+                "type": "text/javascript",
                 "exec": [
-                  "pm.test('Status 201 Created', function () {",
-                  "    pm.response.to.have.status(201);",
+                  "pm.test(\"Status 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
                   "});",
-                  "pm.test('success = true', function () {",
-                  "    var json = pm.response.json();",
-                  "    pm.expect(json.success).to.eql(true);",
+                  "pm.test(\"usuario.rol = Recepcionista\", function () {",
+                  "    pm.expect(pm.response.json().data.usuario.rol).to.eql(\"Recepcionista\");",
+                  "});",
+                  "pm.test(\"Devuelve token JWT\", function () {",
+                  "    var d = pm.response.json().data;",
+                  "    pm.expect(d.token.split('.').length).to.eql(3);",
+                  "    pm.collectionVariables.set('tokenRecepcion', d.token);",
                   "});"
-                ],
-                "type": "text/javascript"
+                ]
               }
             }
           ],
@@ -49,16 +93,523 @@
                 "value": "application/json"
               }
             ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"tipoDocumento\": \"DNI\",\n  \"numeroDocumento\": \"40000003\",\n  \"nombres\": \"Ana Lucía\",\n  \"apellidos\": \"Quispe Ramos\",\n  \"telefono\": \"900000003\",\n  \"email\": \"ana.quispe@example.com\",\n  \"tipoSeguro\": \"Particular\",\n  \"activo\": true\n}",
+              "raw": "{\n  \"username\": \"recepcion\",\n  \"contrasena\": \"{{contrasena}}\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
                 }
               }
+            }
+          }
+        },
+        {
+          "name": "TC00b - Login Enfermería",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"usuario.rol = Enfermera\", function () {",
+                  "    pm.expect(pm.response.json().data.usuario.rol).to.eql(\"Enfermera\");",
+                  "});",
+                  "pm.test(\"Devuelve token JWT\", function () {",
+                  "    var d = pm.response.json().data;",
+                  "    pm.expect(d.token.split('.').length).to.eql(3);",
+                  "    pm.collectionVariables.set('tokenEnfermeria', d.token);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
             },
-            "url": "{{baseUrl}}/api/pacientes"
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"enfermeria\",\n  \"contrasena\": \"{{contrasena}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "TC00c - Login Médico asignado (cmendoza)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"usuario.rol = Medico\", function () {",
+                  "    pm.expect(pm.response.json().data.usuario.rol).to.eql(\"Medico\");",
+                  "});",
+                  "pm.test(\"Devuelve token JWT\", function () {",
+                  "    var d = pm.response.json().data;",
+                  "    pm.expect(d.token.split('.').length).to.eql(3);",
+                  "    pm.collectionVariables.set('tokenMedico', d.token);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"cmendoza\",\n  \"contrasena\": \"{{contrasena}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "TC00d - Login otro médico (jsalazar)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"usuario.rol = Medico\", function () {",
+                  "    pm.expect(pm.response.json().data.usuario.rol).to.eql(\"Medico\");",
+                  "});",
+                  "pm.test(\"Devuelve token JWT\", function () {",
+                  "    var d = pm.response.json().data;",
+                  "    pm.expect(d.token.split('.').length).to.eql(3);",
+                  "    pm.collectionVariables.set('tokenOtroMedico', d.token);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"jsalazar\",\n  \"contrasena\": \"{{contrasena}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "TC00e - Login Caja",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"usuario.rol = Cajero\", function () {",
+                  "    pm.expect(pm.response.json().data.usuario.rol).to.eql(\"Cajero\");",
+                  "});",
+                  "pm.test(\"Devuelve token JWT\", function () {",
+                  "    var d = pm.response.json().data;",
+                  "    pm.expect(d.token.split('.').length).to.eql(3);",
+                  "    pm.collectionVariables.set('tokenCaja', d.token);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"caja\",\n  \"contrasena\": \"{{contrasena}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "TC00f - Login Administración",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"usuario.rol = Administrador\", function () {",
+                  "    pm.expect(pm.response.json().data.usuario.rol).to.eql(\"Administrador\");",
+                  "});",
+                  "pm.test(\"Devuelve token JWT\", function () {",
+                  "    var d = pm.response.json().data;",
+                  "    pm.expect(d.token.split('.').length).to.eql(3);",
+                  "    pm.collectionVariables.set('tokenAdmin', d.token);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"admin\",\n  \"contrasena\": \"{{contrasena}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "TC00g - Contraseña incorrecta (401)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 401 Unauthorized\", function () {",
+                  "    pm.response.to.have.status(401);",
+                  "});",
+                  "pm.test(\"success = false\", function () {",
+                  "    pm.expect(pm.response.json().success).to.eql(false);",
+                  "});",
+                  "pm.test(\"Avisa los intentos restantes\", function () {",
+                  "    pm.expect(pm.response.json().message).to.include('Le quedan 2');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"enfermeria\",\n  \"contrasena\": \"incorrecta\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "TC00h - Sin token (401)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 401 Unauthorized\", function () {",
+                  "    pm.response.to.have.status(401);",
+                  "});",
+                  "pm.test(\"success = false\", function () {",
+                  "    pm.expect(pm.response.json().success).to.eql(false);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/pacientes?page=0&size=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pacientes"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                }
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "TC00i - Perfil de la sesión",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"username = recepcion\", function () {",
+                  "    pm.expect(pm.response.json().data.username).to.eql(\"recepcion\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/perfil",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "perfil"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenRecepcion}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "01 - Pacientes (Recepción)",
+      "item": [
+        {
+          "name": "TC01 - Crear paciente (POST)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 201 Created\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test(\"success = true\", function () {",
+                  "    pm.expect(pm.response.json().success).to.eql(true);",
+                  "});",
+                  "pm.test(\"Auditoría: usuarioCreacion = recepcion\", function () {",
+                  "    var d = pm.response.json().data;",
+                  "    pm.expect(d.usuarioCreacion).to.eql(\"recepcion\");",
+                  "    pm.expect(d.fechaCreacion).to.be.a('string');",
+                  "});",
+                  "pm.test(\"persona.numeroDocumento = 40000003\", function () {",
+                  "    pm.expect(pm.response.json().data.persona.numeroDocumento).to.eql(\"40000003\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/pacientes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pacientes"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenRecepcion}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"persona\": {\n    \"tipoDocumento\": \"DNI\",\n    \"numeroDocumento\": \"40000003\",\n    \"nombres\": \"Ana Lucía\",\n    \"apellidos\": \"Quispe Ramos\",\n    \"sexo\": \"Femenino\",\n    \"telefono\": \"900000003\",\n    \"email\": \"ana.quispe@example.com\"\n  },\n  \"alergias\": \"Ninguna conocida\",\n  \"activo\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
           }
         },
         {
@@ -67,12 +618,15 @@
             {
               "listen": "test",
               "script": {
+                "type": "text/javascript",
                 "exec": [
-                  "pm.test('Status 409 Conflict', function () {",
+                  "pm.test(\"Status 409 Conflict\", function () {",
                   "    pm.response.to.have.status(409);",
+                  "});",
+                  "pm.test(\"success = false\", function () {",
+                  "    pm.expect(pm.response.json().success).to.eql(false);",
                   "});"
-                ],
-                "type": "text/javascript"
+                ]
               }
             }
           ],
@@ -84,16 +638,35 @@
                 "value": "application/json"
               }
             ],
+            "url": {
+              "raw": "{{baseUrl}}/api/pacientes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pacientes"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenRecepcion}}",
+                  "type": "string"
+                }
+              ]
+            },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"tipoDocumento\": \"DNI\",\n  \"numeroDocumento\": \"40000001\",\n  \"nombres\": \"Duplicado\",\n  \"apellidos\": \"Prueba\",\n  \"tipoSeguro\": \"Particular\",\n  \"activo\": true\n}",
+              "raw": "{\n  \"persona\": {\n    \"tipoDocumento\": \"DNI\",\n    \"numeroDocumento\": \"40000001\",\n    \"nombres\": \"Duplicado\",\n    \"apellidos\": \"Prueba\"\n  }\n}",
               "options": {
                 "raw": {
                   "language": "json"
                 }
               }
-            },
-            "url": "{{baseUrl}}/api/pacientes"
+            }
           }
         },
         {
@@ -102,23 +675,51 @@
             {
               "listen": "test",
               "script": {
+                "type": "text/javascript",
                 "exec": [
-                  "pm.test('Status 200 OK', function () {",
+                  "pm.test(\"Status 200 OK\", function () {",
                   "    pm.response.to.have.status(200);",
                   "});",
-                  "pm.test('Tiene items', function () {",
-                  "    var json = pm.response.json();",
-                  "    pm.expect(json.data.items.length).to.be.above(0);",
+                  "pm.test(\"Tiene items\", function () {",
+                  "    pm.expect(pm.response.json().data.items.length).to.be.above(0);",
                   "});"
-                ],
-                "type": "text/javascript"
+                ]
               }
             }
           ],
           "request": {
             "method": "GET",
             "header": [],
-            "url": "{{baseUrl}}/api/pacientes?page=0&size=20"
+            "url": {
+              "raw": "{{baseUrl}}/api/pacientes?page=0&size=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pacientes"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                }
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenRecepcion}}",
+                  "type": "string"
+                }
+              ]
+            }
           }
         },
         {
@@ -127,23 +728,62 @@
             {
               "listen": "test",
               "script": {
+                "type": "text/javascript",
                 "exec": [
-                  "pm.test('Status 404', function () {",
+                  "pm.test(\"Status 404 Not Found\", function () {",
                   "    pm.response.to.have.status(404);",
                   "});"
-                ],
-                "type": "text/javascript"
+                ]
               }
             }
           ],
           "request": {
             "method": "GET",
             "header": [],
-            "url": "{{baseUrl}}/api/pacientes/99999"
+            "url": {
+              "raw": "{{baseUrl}}/api/pacientes/99999",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pacientes",
+                "99999"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenRecepcion}}",
+                  "type": "string"
+                }
+              ]
+            }
           }
         },
         {
           "name": "TC01e - Datos inválidos (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 400 Bad Request\", function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "pm.test(\"success = false\", function () {",
+                  "    pm.expect(pm.response.json().success).to.eql(false);",
+                  "});",
+                  "pm.test(\"Lista los errores\", function () {",
+                  "    pm.expect(pm.response.json().errors.length).to.be.above(0);",
+                  "});"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "POST",
             "header": [
@@ -152,41 +792,155 @@
                 "value": "application/json"
               }
             ],
-            "url": "{{baseUrl}}/api/pacientes",
+            "url": {
+              "raw": "{{baseUrl}}/api/pacientes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pacientes"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenRecepcion}}",
+                  "type": "string"
+                }
+              ]
+            },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"tipoDocumento\": \"DNI\",\n  \"numeroDocumento\": \"12\",\n  \"nombres\": \"A\",\n  \"apellidos\": \"Prueba\",\n  \"tipoSeguro\": \"Particular\"\n}",
+              "raw": "{\n  \"persona\": {\n    \"tipoDocumento\": \"DNI\",\n    \"numeroDocumento\": \"12\",\n    \"nombres\": \"A\",\n    \"apellidos\": \"Prueba\"\n  }\n}",
               "options": {
                 "raw": {
                   "language": "json"
                 }
               }
             }
-          },
+          }
+        },
+        {
+          "name": "TC01f - Seguro sin póliza (400)",
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('Status 400 Bad Request', function () {",
+                  "pm.test(\"Status 400 Bad Request\", function () {",
                   "    pm.response.to.have.status(400);",
                   "});",
-                  "pm.test('success = false', function () {",
+                  "pm.test(\"success = false\", function () {",
                   "    pm.expect(pm.response.json().success).to.eql(false);",
-                  "});",
-                  "pm.test('Lista los errores', function () {",
-                  "    pm.expect(pm.response.json().errors.length).to.be.above(0);",
                   "});"
                 ]
               }
             }
-          ]
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/pacientes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pacientes"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenRecepcion}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"persona\": {\n    \"tipoDocumento\": \"DNI\",\n    \"numeroDocumento\": \"40000009\",\n    \"nombres\": \"Sin\",\n    \"apellidos\": \"Póliza\"\n  },\n  \"aseguradoraId\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "TC01g - Caja no registra pacientes (403)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 403 Forbidden\", function () {",
+                  "    pm.response.to.have.status(403);",
+                  "});",
+                  "pm.test(\"success = false\", function () {",
+                  "    pm.expect(pm.response.json().success).to.eql(false);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/pacientes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pacientes"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenCaja}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"persona\": {\n    \"tipoDocumento\": \"DNI\",\n    \"numeroDocumento\": \"40000010\",\n    \"nombres\": \"Rol\",\n    \"apellidos\": \"Incorrecto\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
         }
       ]
     },
     {
-      "name": "02 - Citas",
+      "name": "02 - Citas (Recepción)",
       "item": [
         {
           "name": "TC02 - Consulta general de citas (GET)",
@@ -194,42 +948,118 @@
             {
               "listen": "test",
               "script": {
+                "type": "text/javascript",
                 "exec": [
-                  "pm.test('Status 200 OK', function () {",
+                  "pm.test(\"Status 200 OK\", function () {",
                   "    pm.response.to.have.status(200);",
                   "});",
-                  "pm.test('Respuesta paginada', function () {",
-                  "    var json = pm.response.json();",
-                  "    pm.expect(json.success).to.eql(true);",
-                  "    pm.expect(json.data).to.have.property('items');",
+                  "pm.test(\"Respuesta paginada\", function () {",
+                  "    pm.expect(pm.response.json().data).to.have.property('items');",
                   "});"
-                ],
-                "type": "text/javascript"
+                ]
               }
             }
           ],
           "request": {
             "method": "GET",
             "header": [],
-            "url": "{{baseUrl}}/api/citas?page=0&size=20"
+            "url": {
+              "raw": "{{baseUrl}}/api/citas?page=0&size=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "citas"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                }
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenRecepcion}}",
+                  "type": "string"
+                }
+              ]
+            }
           }
         },
         {
-          "name": "TC03 - Actualizar estado a EnTriaje (PATCH)",
+          "name": "TC03 - Registrar llegada del paciente (PATCH)",
           "event": [
             {
               "listen": "test",
               "script": {
+                "type": "text/javascript",
                 "exec": [
-                  "pm.test('Status 200 OK', function () {",
+                  "pm.test(\"Status 200 OK\", function () {",
                   "    pm.response.to.have.status(200);",
                   "});",
-                  "pm.test('Estado EnTriaje', function () {",
-                  "    var json = pm.response.json();",
-                  "    pm.expect(json.data.estado).to.eql('EnTriaje');",
+                  "pm.test(\"Tiene hora de llegada\", function () {",
+                  "    pm.expect(pm.response.json().data.fechaHoraLlegada).to.be.a('string');",
+                  "});",
+                  "pm.test(\"Auditoría: usuarioActualizacion = recepcion\", function () {",
+                  "    var d = pm.response.json().data;",
+                  "    pm.expect(d.usuarioActualizacion).to.eql(\"recepcion\");",
+                  "    pm.expect(d.fechaActualizacion).to.be.a('string');",
                   "});"
-                ],
-                "type": "text/javascript"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/citas/{{citaId}}/llegada",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "citas",
+                "{{citaId}}",
+                "llegada"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenRecepcion}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "TC03b - EnTriaje no se asigna a mano (422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 422 Unprocessable Entity\", function () {",
+                  "    pm.response.to.have.status(422);",
+                  "});",
+                  "pm.test(\"success = false\", function () {",
+                  "    pm.expect(pm.response.json().success).to.eql(false);",
+                  "});"
+                ]
               }
             }
           ],
@@ -241,20 +1071,57 @@
                 "value": "application/json"
               }
             ],
+            "url": {
+              "raw": "{{baseUrl}}/api/citas/{{citaId}}/estado",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "citas",
+                "{{citaId}}",
+                "estado"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenRecepcion}}",
+                  "type": "string"
+                }
+              ]
+            },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"estado\": \"EnTriaje\",\n  \"observacionCancelacion\": null\n}",
+              "raw": "{\n  \"estado\": \"EnTriaje\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
                 }
               }
-            },
-            "url": "{{baseUrl}}/api/citas/{{citaId}}/estado"
+            }
           }
         },
         {
-          "name": "TC03b - Transición de estado no permitida (422)",
+          "name": "TC03c - Transición de estado no permitida (422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 422 Unprocessable Entity\", function () {",
+                  "    pm.response.to.have.status(422);",
+                  "});",
+                  "pm.test(\"success = false\", function () {",
+                  "    pm.expect(pm.response.json().success).to.eql(false);",
+                  "});"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "PATCH",
             "header": [
@@ -263,33 +1130,38 @@
                 "value": "application/json"
               }
             ],
-            "url": "{{baseUrl}}/api/citas/{{citaId}}/estado",
+            "url": {
+              "raw": "{{baseUrl}}/api/citas/{{citaId}}/estado",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "citas",
+                "{{citaId}}",
+                "estado"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenRecepcion}}",
+                  "type": "string"
+                }
+              ]
+            },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"estado\": \"Finalizada\"\n}",
+              "raw": "{\n  \"estado\": \"Confirmada\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
                 }
               }
             }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status 422 Unprocessable Entity', function () {",
-                  "    pm.response.to.have.status(422);",
-                  "});",
-                  "pm.test('success = false', function () {",
-                  "    pm.expect(pm.response.json().success).to.eql(false);",
-                  "});"
-                ]
-              }
-            }
-          ]
+          }
         },
         {
           "name": "TC04 - Crear nueva cita (POST)",
@@ -299,27 +1171,40 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "// Siempre 30 días después de hoy, a las 11:00",
                   "var d = new Date();",
                   "d.setDate(d.getDate() + 30);",
+                  "if (d.getDay() === 0) { d.setDate(d.getDate() + 1); }",
                   "var pad = function (n) { return String(n).padStart(2, '0'); };",
-                  "pm.collectionVariables.set('fechaCita', d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + 'T11:00:00');"
+                  "var dia = d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());",
+                  "pm.collectionVariables.set('fechaCita', dia + 'T11:00:00');",
+                  "pm.collectionVariables.set('fechaFueraDeHorario', dia + 'T22:00:00');"
                 ]
               }
             },
             {
               "listen": "test",
               "script": {
+                "type": "text/javascript",
                 "exec": [
-                  "pm.test('Status 201 Created', function () {",
+                  "pm.test(\"Status 201 Created\", function () {",
                   "    pm.response.to.have.status(201);",
                   "});",
+                  "pm.test(\"estado = Solicitada\", function () {",
+                  "    pm.expect(pm.response.json().data.estado).to.eql(\"Solicitada\");",
+                  "});",
+                  "pm.test(\"precioConsulta = 90\", function () {",
+                  "    pm.expect(pm.response.json().data.precioConsulta).to.eql(90);",
+                  "});",
+                  "pm.test(\"Auditoría: usuarioCreacion = recepcion\", function () {",
+                  "    var d = pm.response.json().data;",
+                  "    pm.expect(d.usuarioCreacion).to.eql(\"recepcion\");",
+                  "    pm.expect(d.fechaCreacion).to.be.a('string');",
+                  "});",
                   "var json = pm.response.json();",
-                  "if (json.data && json.data.id) {",
+                  "if (json.data && json.data.id !== undefined) {",
                   "    pm.collectionVariables.set('citaIdNueva', json.data.id);",
                   "}"
-                ],
-                "type": "text/javascript"
+                ]
               }
             }
           ],
@@ -331,6 +1216,26 @@
                 "value": "application/json"
               }
             ],
+            "url": {
+              "raw": "{{baseUrl}}/api/citas",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "citas"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenRecepcion}}",
+                  "type": "string"
+                }
+              ]
+            },
             "body": {
               "mode": "raw",
               "raw": "{\n  \"pacienteId\": 2,\n  \"medicoId\": 2,\n  \"especialidadId\": 2,\n  \"fechaHoraCita\": \"{{fechaCita}}\",\n  \"motivoConsulta\": \"Control pediátrico de rutina\"\n}",
@@ -339,12 +1244,27 @@
                   "language": "json"
                 }
               }
-            },
-            "url": "{{baseUrl}}/api/citas"
+            }
           }
         },
         {
           "name": "TC04b - Especialidad distinta a la del médico (422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 422 Unprocessable Entity\", function () {",
+                  "    pm.response.to.have.status(422);",
+                  "});",
+                  "pm.test(\"success = false\", function () {",
+                  "    pm.expect(pm.response.json().success).to.eql(false);",
+                  "});"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "POST",
             "header": [
@@ -353,7 +1273,26 @@
                 "value": "application/json"
               }
             ],
-            "url": "{{baseUrl}}/api/citas",
+            "url": {
+              "raw": "{{baseUrl}}/api/citas",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "citas"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenRecepcion}}",
+                  "type": "string"
+                }
+              ]
+            },
             "body": {
               "mode": "raw",
               "raw": "{\n  \"pacienteId\": 2,\n  \"medicoId\": 1,\n  \"especialidadId\": 2,\n  \"fechaHoraCita\": \"{{fechaCita}}\"\n}",
@@ -363,23 +1302,180 @@
                 }
               }
             }
-          },
+          }
+        },
+        {
+          "name": "TC04c - Fuera del horario del médico (422)",
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('Status 422 Unprocessable Entity', function () {",
+                  "pm.test(\"Status 422 Unprocessable Entity\", function () {",
                   "    pm.response.to.have.status(422);",
                   "});",
-                  "pm.test('success = false', function () {",
+                  "pm.test(\"success = false\", function () {",
                   "    pm.expect(pm.response.json().success).to.eql(false);",
                   "});"
                 ]
               }
             }
-          ]
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/citas",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "citas"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenRecepcion}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pacienteId\": 2,\n  \"medicoId\": 2,\n  \"especialidadId\": 2,\n  \"fechaHoraCita\": \"{{fechaFueraDeHorario}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "TC04d - Cruce con otra cita del médico (409)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 409 Conflict\", function () {",
+                  "    pm.response.to.have.status(409);",
+                  "});",
+                  "pm.test(\"success = false\", function () {",
+                  "    pm.expect(pm.response.json().success).to.eql(false);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/citas",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "citas"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenRecepcion}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pacienteId\": 1,\n  \"medicoId\": 2,\n  \"especialidadId\": 2,\n  \"fechaHoraCita\": \"{{fechaCita}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "TC04e - Confirmar la cita nueva (PATCH)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"estado = Confirmada\", function () {",
+                  "    pm.expect(pm.response.json().data.estado).to.eql(\"Confirmada\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/citas/{{citaIdNueva}}/estado",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "citas",
+                "{{citaIdNueva}}",
+                "estado"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenRecepcion}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"estado\": \"Confirmada\",\n  \"observacion\": \"Confirmada por teléfono\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
         },
         {
           "name": "TC05 - Cancelar cita (DELETE)",
@@ -387,16 +1483,15 @@
             {
               "listen": "test",
               "script": {
+                "type": "text/javascript",
                 "exec": [
-                  "pm.test('Status 200 OK', function () {",
+                  "pm.test(\"Status 200 OK\", function () {",
                   "    pm.response.to.have.status(200);",
                   "});",
-                  "pm.test('Estado Cancelada', function () {",
-                  "    var json = pm.response.json();",
-                  "    pm.expect(json.data.estado).to.eql('Cancelada');",
+                  "pm.test(\"estado = Cancelada\", function () {",
+                  "    pm.expect(pm.response.json().data.estado).to.eql(\"Cancelada\");",
                   "});"
-                ],
-                "type": "text/javascript"
+                ]
               }
             }
           ],
@@ -408,6 +1503,27 @@
                 "value": "application/json"
               }
             ],
+            "url": {
+              "raw": "{{baseUrl}}/api/citas/{{citaIdNueva}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "citas",
+                "{{citaIdNueva}}"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenRecepcion}}",
+                  "type": "string"
+                }
+              ]
+            },
             "body": {
               "mode": "raw",
               "raw": "{\n  \"observacionCancelacion\": \"Paciente solicitó reprogramación por motivos laborales\"\n}",
@@ -416,17 +1532,76 @@
                   "language": "json"
                 }
               }
+            }
+          }
+        },
+        {
+          "name": "TC05b - Historial de la cita cancelada",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"Tres cambios hechos por recepcion\", function () {",
+                  "    var h = pm.response.json().data;",
+                  "    pm.expect(h.map(function (x) { return x.estadoNuevo; })).to.eql(['Solicitada', 'Confirmada', 'Cancelada']);",
+                  "    h.forEach(function (x) { pm.expect(x.usuarioCreacion).to.eql('recepcion'); });",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/citas/{{citaIdNueva}}/historial",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "citas",
+                "{{citaIdNueva}}",
+                "historial"
+              ]
             },
-            "url": "{{baseUrl}}/api/citas/{{citaIdNueva}}"
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenRecepcion}}",
+                  "type": "string"
+                }
+              ]
+            }
           }
         }
       ]
     },
     {
-      "name": "03 - Flujo clínico jerárquico",
+      "name": "03 - Flujo clínico (Enfermería y Médico)",
       "item": [
         {
-          "name": "TC06 - Registrar triaje",
+          "name": "TC06a - Recepción no registra triaje (403)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 403 Forbidden\", function () {",
+                  "    pm.response.to.have.status(403);",
+                  "});"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "POST",
             "header": [
@@ -435,80 +1610,1805 @@
                 "value": "application/json"
               }
             ],
+            "url": {
+              "raw": "{{baseUrl}}/api/citas/{{citaId}}/triaje",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "citas",
+                "{{citaId}}",
+                "triaje"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenRecepcion}}",
+                  "type": "string"
+                }
+              ]
+            },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"sintomas\": \"Cefalea y mareos leves\",\n  \"presionArterial\": \"120/80\",\n  \"frecuenciaCardiaca\": 78,\n  \"temperatura\": 36.8,\n  \"pesoKg\": 70,\n  \"tallaCm\": 170,\n  \"prioridad\": \"Media\"\n}",
+              "raw": "{\n  \"prioridad\": \"Media\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
                 }
               }
-            },
-            "url": "{{baseUrl}}/api/citas/{{citaId}}/triaje"
-          },
+            }
+          }
+        },
+        {
+          "name": "TC06 - Registrar triaje",
           "event": [
             {
               "listen": "test",
               "script": {
+                "type": "text/javascript",
                 "exec": [
-                  "pm.test('Status 201 Created', function () {",
+                  "pm.test(\"Status 201 Created\", function () {",
                   "    pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test(\"Auditoría: usuarioCreacion = enfermeria\", function () {",
+                  "    var d = pm.response.json().data;",
+                  "    pm.expect(d.usuarioCreacion).to.eql(\"enfermeria\");",
+                  "    pm.expect(d.fechaCreacion).to.be.a('string');",
                   "});"
-                ],
-                "type": "text/javascript"
+                ]
               }
             }
-          ]
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/citas/{{citaId}}/triaje",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "citas",
+                "{{citaId}}",
+                "triaje"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenEnfermeria}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sintomas\": \"Cefalea y mareos leves\",\n  \"presionArterial\": \"120/80\",\n  \"frecuenciaCardiaca\": 78,\n  \"frecuenciaRespiratoria\": 16,\n  \"saturacionOxigeno\": 97,\n  \"temperatura\": 36.8,\n  \"pesoKg\": 70,\n  \"tallaCm\": 170,\n  \"prioridad\": \"Media\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
         },
         {
-          "name": "TC07 - Listar especialidades",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": "{{baseUrl}}/api/especialidades?page=0&size=20"
-          },
+          "name": "TC06b - Triaje duplicado (409)",
           "event": [
             {
               "listen": "test",
               "script": {
+                "type": "text/javascript",
                 "exec": [
-                  "pm.test('Status 200 OK', function () {",
-                  "    pm.response.to.have.status(200);",
+                  "pm.test(\"Status 409 Conflict\", function () {",
+                  "    pm.response.to.have.status(409);",
                   "});",
-                  "pm.test('Tiene items', function () {",
-                  "    var json = pm.response.json();",
-                  "    pm.expect(json.data.items.length).to.be.above(0);",
+                  "pm.test(\"success = false\", function () {",
+                  "    pm.expect(pm.response.json().success).to.eql(false);",
                   "});"
-                ],
-                "type": "text/javascript"
+                ]
               }
             }
-          ]
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/citas/{{citaId}}/triaje",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "citas",
+                "{{citaId}}",
+                "triaje"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenEnfermeria}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"prioridad\": \"Alta\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
         },
         {
-          "name": "TC08 - Listar médicos",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": "{{baseUrl}}/api/medicos?page=0&size=20"
-          },
+          "name": "TC07a - Médico no asignado (403)",
           "event": [
             {
               "listen": "test",
               "script": {
+                "type": "text/javascript",
                 "exec": [
-                  "pm.test('Status 200 OK', function () {",
-                  "    pm.response.to.have.status(200);",
+                  "pm.test(\"Status 403 Forbidden\", function () {",
+                  "    pm.response.to.have.status(403);",
                   "});",
-                  "pm.test('Tiene items', function () {",
-                  "    var json = pm.response.json();",
-                  "    pm.expect(json.data.items.length).to.be.above(0);",
+                  "pm.test(\"success = false\", function () {",
+                  "    pm.expect(pm.response.json().success).to.eql(false);",
                   "});"
-                ],
-                "type": "text/javascript"
+                ]
               }
             }
-          ]
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/citas/{{citaId}}/atencion",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "citas",
+                "{{citaId}}",
+                "atencion"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenOtroMedico}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "TC07 - Iniciar atención",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 201 Created\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test(\"estado = EnCurso\", function () {",
+                  "    pm.expect(pm.response.json().data.estado).to.eql(\"EnCurso\");",
+                  "});",
+                  "pm.test(\"Auditoría: usuarioCreacion = cmendoza\", function () {",
+                  "    var d = pm.response.json().data;",
+                  "    pm.expect(d.usuarioCreacion).to.eql(\"cmendoza\");",
+                  "    pm.expect(d.fechaCreacion).to.be.a('string');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/citas/{{citaId}}/atencion",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "citas",
+                "{{citaId}}",
+                "atencion"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenMedico}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"evolucion\": \"Paciente estable, refiere cefalea leve.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "TC07b - Completar sin diagnóstico (422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 422 Unprocessable Entity\", function () {",
+                  "    pm.response.to.have.status(422);",
+                  "});",
+                  "pm.test(\"success = false\", function () {",
+                  "    pm.expect(pm.response.json().success).to.eql(false);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/citas/{{citaId}}/atencion",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "citas",
+                "{{citaId}}",
+                "atencion"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenMedico}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"evolucion\": \"Paciente estable.\",\n  \"estado\": \"Completada\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "TC08 - Agregar diagnóstico CIE-10",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 201 Created\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test(\"codigo = I10\", function () {",
+                  "    pm.expect(pm.response.json().data.codigo).to.eql(\"I10\");",
+                  "});",
+                  "pm.test(\"principal = true\", function () {",
+                  "    pm.expect(pm.response.json().data.principal).to.eql(true);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/citas/{{citaId}}/atencion/diagnosticos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "citas",
+                "{{citaId}}",
+                "atencion",
+                "diagnosticos"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenMedico}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cie10Id\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "TC08b - Diagnóstico repetido (409)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 409 Conflict\", function () {",
+                  "    pm.response.to.have.status(409);",
+                  "});",
+                  "pm.test(\"success = false\", function () {",
+                  "    pm.expect(pm.response.json().success).to.eql(false);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/citas/{{citaId}}/atencion/diagnosticos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "citas",
+                "{{citaId}}",
+                "atencion",
+                "diagnosticos"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenMedico}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cie10Id\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "TC08c - Nuevo diagnóstico principal",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 201 Created\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test(\"principal = true\", function () {",
+                  "    pm.expect(pm.response.json().data.principal).to.eql(true);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/citas/{{citaId}}/atencion/diagnosticos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "citas",
+                "{{citaId}}",
+                "atencion",
+                "diagnosticos"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenMedico}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cie10Id\": 8,\n  \"principal\": true,\n  \"observacion\": \"Cefalea tensional\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "TC09 - Agregar medicamento a la receta",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 201 Created\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test(\"Auditoría: usuarioCreacion = cmendoza\", function () {",
+                  "    var d = pm.response.json().data;",
+                  "    pm.expect(d.usuarioCreacion).to.eql(\"cmendoza\");",
+                  "    pm.expect(d.fechaCreacion).to.be.a('string');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/citas/{{citaId}}/atencion/receta",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "citas",
+                "{{citaId}}",
+                "atencion",
+                "receta"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenMedico}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"medicamento\": \"Paracetamol 500 mg tableta\",\n  \"dosis\": \"1 tableta\",\n  \"frecuencia\": \"Cada 8 horas\",\n  \"duracionDias\": 3,\n  \"indicaciones\": \"Después de las comidas\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "TC09b - Un solo diagnóstico principal",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"Exactamente un principal\", function () {",
+                  "    var dx = pm.response.json().data.diagnosticos;",
+                  "    pm.expect(dx.length).to.eql(2);",
+                  "    pm.expect(dx.filter(function (d) { return d.principal; }).length).to.eql(1);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/citas/{{citaId}}/atencion",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "citas",
+                "{{citaId}}",
+                "atencion"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenMedico}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "TC10 - Completar atención",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"estado = Completada\", function () {",
+                  "    pm.expect(pm.response.json().data.estado).to.eql(\"Completada\");",
+                  "});",
+                  "pm.test(\"Tiene hora de fin\", function () {",
+                  "    pm.expect(pm.response.json().data.fechaHoraFin).to.be.a('string');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/citas/{{citaId}}/atencion",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "citas",
+                "{{citaId}}",
+                "atencion"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenMedico}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"evolucion\": \"Cefalea tensional, sin signos de alarma.\",\n  \"tratamiento\": \"Analgésico y control en 1 semana.\",\n  \"estado\": \"Completada\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "TC10b - La cita queda Finalizada por el médico",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"estado = Finalizada\", function () {",
+                  "    pm.expect(pm.response.json().data.estado).to.eql(\"Finalizada\");",
+                  "});",
+                  "pm.test(\"Auditoría: usuarioActualizacion = cmendoza\", function () {",
+                  "    var d = pm.response.json().data;",
+                  "    pm.expect(d.usuarioActualizacion).to.eql(\"cmendoza\");",
+                  "    pm.expect(d.fechaActualizacion).to.be.a('string');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/citas/{{citaId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "citas",
+                "{{citaId}}"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenRecepcion}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "TC10c - Historial: cada paso con su usuario",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"Pasó por enfermería y por el médico\", function () {",
+                  "    var h = pm.response.json().data;",
+                  "    var por = {};",
+                  "    h.forEach(function (x) { por[x.estadoNuevo] = x.usuarioCreacion; });",
+                  "    pm.expect(por.EnTriaje).to.eql('enfermeria');",
+                  "    pm.expect(por.EnAtencion).to.eql('cmendoza');",
+                  "    pm.expect(por.Finalizada).to.eql('cmendoza');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/citas/{{citaId}}/historial",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "citas",
+                "{{citaId}}",
+                "historial"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenRecepcion}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "04 - Pagos (Caja)",
+      "item": [
+        {
+          "name": "TC11 - Registrar pago con boleta",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 201 Created\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test(\"Auditoría: usuarioCreacion = caja\", function () {",
+                  "    var d = pm.response.json().data;",
+                  "    pm.expect(d.usuarioCreacion).to.eql(\"caja\");",
+                  "    pm.expect(d.fechaCreacion).to.be.a('string');",
+                  "});",
+                  "pm.test(\"Códigos con el formato del modelo\", function () {",
+                  "    var d = pm.response.json().data;",
+                  "    pm.expect(d.codigoTransaccion).to.match(/^TXN-[0-9]{8}-[0-9]{5}$/);",
+                  "    pm.expect(d.numeroComprobante).to.match(/^B001-[0-9]{6}$/);",
+                  "});",
+                  "var json = pm.response.json();",
+                  "if (json.data && json.data.id !== undefined) {",
+                  "    pm.collectionVariables.set('pagoId', json.data.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/citas/{{citaId}}/pagos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "citas",
+                "{{citaId}}",
+                "pagos"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenCaja}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"montoTotal\": 120,\n  \"metodoPago\": \"Yape\",\n  \"numeroOperacion\": \"08823411\",\n  \"tipoComprobante\": \"Boleta\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "TC11b - Segundo pago vigente (409)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 409 Conflict\", function () {",
+                  "    pm.response.to.have.status(409);",
+                  "});",
+                  "pm.test(\"success = false\", function () {",
+                  "    pm.expect(pm.response.json().success).to.eql(false);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/citas/{{citaId}}/pagos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "citas",
+                "{{citaId}}",
+                "pagos"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenCaja}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"montoTotal\": 120,\n  \"metodoPago\": \"Efectivo\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "TC11c - Yape sin número de operación (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 400 Bad Request\", function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "pm.test(\"success = false\", function () {",
+                  "    pm.expect(pm.response.json().success).to.eql(false);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/citas/{{citaId}}/pagos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "citas",
+                "{{citaId}}",
+                "pagos"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenCaja}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"montoTotal\": 120,\n  \"metodoPago\": \"Yape\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "TC11d - Recepción no cobra (403)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 403 Forbidden\", function () {",
+                  "    pm.response.to.have.status(403);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/citas/{{citaId}}/pagos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "citas",
+                "{{citaId}}",
+                "pagos"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenRecepcion}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"montoTotal\": 120,\n  \"metodoPago\": \"Efectivo\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "TC12 - Anular pago con motivo",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"estadoPago = Anulado\", function () {",
+                  "    pm.expect(pm.response.json().data.estadoPago).to.eql(\"Anulado\");",
+                  "});",
+                  "pm.test(\"Auditoría: usuarioActualizacion = caja\", function () {",
+                  "    var d = pm.response.json().data;",
+                  "    pm.expect(d.usuarioActualizacion).to.eql(\"caja\");",
+                  "    pm.expect(d.fechaActualizacion).to.be.a('string');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/citas/{{citaId}}/pagos/{{pagoId}}/estado",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "citas",
+                "{{citaId}}",
+                "pagos",
+                "{{pagoId}}",
+                "estado"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenCaja}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"estado\": \"Anulado\",\n  \"motivo\": \"El cliente pidió factura en lugar de boleta\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "TC13 - Factura sin RUC (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 400 Bad Request\", function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "pm.test(\"success = false\", function () {",
+                  "    pm.expect(pm.response.json().success).to.eql(false);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/citas/{{citaId}}/pagos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "citas",
+                "{{citaId}}",
+                "pagos"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenCaja}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"montoTotal\": 120,\n  \"metodoPago\": \"Tarjeta\",\n  \"numeroOperacion\": \"4411\",\n  \"tipoComprobante\": \"Factura\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "TC13b - Registrar pago con factura",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 201 Created\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test(\"Factura F001\", function () {",
+                  "    pm.expect(pm.response.json().data.numeroComprobante).to.match(/^F001-[0-9]{6}$/);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/citas/{{citaId}}/pagos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "citas",
+                "{{citaId}}",
+                "pagos"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenCaja}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"montoTotal\": 120,\n  \"metodoPago\": \"Tarjeta\",\n  \"numeroOperacion\": \"4411\",\n  \"tipoComprobante\": \"Factura\",\n  \"rucCliente\": \"20123456789\",\n  \"razonSocialCliente\": \"Transportes Norte S.A.C.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "TC13c - Pagos de la cita (anulado + vigente)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"Dos pagos, uno vigente\", function () {",
+                  "    var p = pm.response.json().data;",
+                  "    pm.expect(p.length).to.eql(2);",
+                  "    pm.expect(p.filter(function (x) { return x.estadoPago === 'Pagado'; }).length).to.eql(1);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/citas/{{citaId}}/pagos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "citas",
+                "{{citaId}}",
+                "pagos"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenRecepcion}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "05 - Administración",
+      "item": [
+        {
+          "name": "TC14 - Roles del sistema",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"Cinco roles\", function () {",
+                  "    pm.expect(pm.response.json().data.length).to.eql(5);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/roles",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "roles"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenAdmin}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "TC14b - Recepción no ve usuarios (403)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 403 Forbidden\", function () {",
+                  "    pm.response.to.have.status(403);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/usuarios",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "usuarios"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenRecepcion}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "TC15 - Listar usuarios",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"Nunca expone la contraseña\", function () {",
+                  "    pm.expect(pm.response.text()).to.not.include('contrasena');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/usuarios?page=0&size=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "usuarios"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                }
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenAdmin}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "TC15b - Rol Médico para quien no es médico (422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 422 Unprocessable Entity\", function () {",
+                  "    pm.response.to.have.status(422);",
+                  "});",
+                  "pm.test(\"success = false\", function () {",
+                  "    pm.expect(pm.response.json().success).to.eql(false);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/usuarios",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "usuarios"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenAdmin}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"persona\": {\n    \"tipoDocumento\": \"DNI\",\n    \"numeroDocumento\": \"46789012\",\n    \"nombres\": \"Carmen\",\n    \"apellidos\": \"Ruiz Paredes\"\n  },\n  \"rolId\": 4,\n  \"username\": \"cruiz\",\n  \"contrasena\": \"Enfermera2026\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "TC15c - Crear usuario de Enfermería",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 201 Created\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test(\"rol = Enfermera\", function () {",
+                  "    pm.expect(pm.response.json().data.rol).to.eql(\"Enfermera\");",
+                  "});",
+                  "pm.test(\"Auditoría: usuarioCreacion = admin\", function () {",
+                  "    var d = pm.response.json().data;",
+                  "    pm.expect(d.usuarioCreacion).to.eql(\"admin\");",
+                  "    pm.expect(d.fechaCreacion).to.be.a('string');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/usuarios",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "usuarios"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenAdmin}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"persona\": {\n    \"tipoDocumento\": \"DNI\",\n    \"numeroDocumento\": \"46789012\",\n    \"nombres\": \"Carmen\",\n    \"apellidos\": \"Ruiz Paredes\"\n  },\n  \"rolId\": 3,\n  \"username\": \"cruiz\",\n  \"contrasena\": \"Enfermera2026\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "TC16 - Horario que se cruza (409)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 409 Conflict\", function () {",
+                  "    pm.response.to.have.status(409);",
+                  "});",
+                  "pm.test(\"success = false\", function () {",
+                  "    pm.expect(pm.response.json().success).to.eql(false);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/medicos/1/horarios",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "medicos",
+                "1",
+                "horarios"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenAdmin}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"diaSemana\": \"Lunes\",\n  \"horaInicio\": \"09:00\",\n  \"horaFin\": \"10:00\",\n  \"duracionCitaMinutos\": 30\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "TC17 - Listar especialidades",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"Tiene items\", function () {",
+                  "    pm.expect(pm.response.json().data.items.length).to.be.above(0);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/especialidades?page=0&size=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "especialidades"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                }
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenAdmin}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "TC18 - Listar médicos con sus especialidades",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"Cada médico trae especialidades\", function () {",
+                  "    pm.response.json().data.items.forEach(function (m) { pm.expect(m.especialidades.length).to.be.above(0); });",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/medicos?page=0&size=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "medicos"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                }
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenAdmin}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "TC19 - Subir tarifa de Cardiología",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"precioBase = 150\", function () {",
+                  "    pm.expect(pm.response.json().data.precioBase).to.eql(150);",
+                  "});",
+                  "pm.test(\"Auditoría: usuarioActualizacion = admin\", function () {",
+                  "    var d = pm.response.json().data;",
+                  "    pm.expect(d.usuarioActualizacion).to.eql(\"admin\");",
+                  "    pm.expect(d.fechaActualizacion).to.be.a('string');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/especialidades/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "especialidades",
+                "1"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenAdmin}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Cardiología\",\n  \"descripcion\": \"Atención del sistema cardiovascular\",\n  \"precioBase\": 150,\n  \"activo\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "TC19b - La cita conserva su precio",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"precioConsulta = 120\", function () {",
+                  "    pm.expect(pm.response.json().data.precioConsulta).to.eql(120);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/citas/{{citaId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "citas",
+                "{{citaId}}"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenRecepcion}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
         }
       ]
     }

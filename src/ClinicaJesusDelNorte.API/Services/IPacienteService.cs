@@ -1,5 +1,7 @@
 using ClinicaJesusDelNorte.API.Models.Common;
 using ClinicaJesusDelNorte.API.Models.DTOs;
+using ClinicaJesusDelNorte.API.Models.Entities;
+using ClinicaJesusDelNorte.API.Models.Enums;
 
 namespace ClinicaJesusDelNorte.API.Services;
 

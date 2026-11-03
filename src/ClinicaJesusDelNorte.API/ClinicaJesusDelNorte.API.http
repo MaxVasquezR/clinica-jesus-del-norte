@@ -1,25 +1,39 @@
 @baseUrl = http://localhost:8080
 
+### Iniciar sesión como recepción (copia data.token en @token)
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "username": "recepcion",
+  "contrasena": "CitaSync2026"
+}
+
+###
+@token = pega-aqui-el-token
+
 ### Listar citas
 GET {{baseUrl}}/api/citas?page=0&size=20
+Authorization: Bearer {{token}}
 
 ### Crear paciente
 POST {{baseUrl}}/api/pacientes
+Authorization: Bearer {{token}}
 Content-Type: application/json
 
 {
-  "tipoDocumento": "DNI",
-  "numeroDocumento": "40000004",
-  "nombres": "Prueba",
-  "apellidos": "HTTP Client",
-  "tipoSeguro": "Particular",
-  "activo": true
+  "persona": {
+    "tipoDocumento": "DNI",
+    "numeroDocumento": "40000004",
+    "nombres": "Prueba",
+    "apellidos": "HTTP Client"
+  }
 }
 
-### Cambiar estado cita
-PATCH {{baseUrl}}/api/citas/1/estado
-Content-Type: application/json
+### Registrar llegada de la cita 1
+PATCH {{baseUrl}}/api/citas/1/llegada
+Authorization: Bearer {{token}}
 
-{
-  "estado": "EnTriaje"
-}
+### Historial de estados de la cita 1
+GET {{baseUrl}}/api/citas/1/historial
+Authorization: Bearer {{token}}

@@ -2,99 +2,106 @@ using ClinicaJesusDelNorte.API.Exceptions;
 using ClinicaJesusDelNorte.API.Models.Common;
 using ClinicaJesusDelNorte.API.Models.DTOs;
 using ClinicaJesusDelNorte.API.Models.Entities;
+using ClinicaJesusDelNorte.API.Models.Enums;
 using ClinicaJesusDelNorte.API.Repository;
 
 namespace ClinicaJesusDelNorte.API.Services;
 
 public class PacienteService : IPacienteService
 {
-    private readonly IPacienteRepository _repository;
+    private readonly IRepositorio<Paciente> _pacientes;
+    private readonly IRepositorio<Aseguradora> _aseguradoras;
+    private readonly IPersonaService _personaService;
+    private readonly Secuencias _secuencias;
 
-    public PacienteService(IPacienteRepository repository)
+    public PacienteService(
+        IRepositorio<Paciente> pacientes,
+        IRepositorio<Aseguradora> aseguradoras,
+        IPersonaService personaService,
+        Secuencias secuencias)
     {
-        _repository = repository;
+        _pacientes = pacientes;
+        _aseguradoras = aseguradoras;
+        _personaService = personaService;
+        _secuencias = secuencias;
     }
 
     public PagedResult<PacienteResponseDto> Listar(int page, int size)
     {
-        return Paginador.Crear(_repository.GetAll(), page, size, Map);
+        return Paginador.Crear(_pacientes.GetAll(), page, size, Map);
     }
 
     public PacienteResponseDto ObtenerPorId(int id)
     {
-        var paciente = _repository.GetById(id)
-            ?? throw new NotFoundException($"No se encontró el paciente con ID {id}.");
-        return Map(paciente);
+        return Map(ObtenerPaciente(id));
     }
 
     public PacienteResponseDto Crear(CrearPacienteDto dto)
     {
-        var existente = _repository.GetByDocumento(dto.NumeroDocumento.Trim());
-        if (existente is not null)
+        ValidarAseguradora(dto.AseguradoraId);
+
+        var existente = _personaService.BuscarPorDocumento(dto.Persona.TipoDocumento, dto.Persona.NumeroDocumento);
+        if (existente is not null && _pacientes.Any(p => p.PersonaId == existente.Id))
         {
-            throw new ConflictException($"Ya existe un paciente con documento {dto.NumeroDocumento}.");
+            throw new ConflictException($"Ya existe un paciente con documento {existente.NumeroDocumento}.");
         }
 
+        var persona = _personaService.ObtenerOCrear(dto.Persona);
         var paciente = new Paciente
         {
-            TipoDocumento = dto.TipoDocumento,
-            NumeroDocumento = dto.NumeroDocumento.Trim(),
-            Nombres = dto.Nombres.Trim(),
-            Apellidos = dto.Apellidos.Trim(),
-            FechaNacimiento = dto.FechaNacimiento,
-            Telefono = dto.Telefono,
-            Email = dto.Email,
-            Direccion = dto.Direccion,
-            TipoSeguro = dto.TipoSeguro,
-            NumeroPoliza = dto.NumeroPoliza,
+            PersonaId = persona.Id,
+            CodigoPaciente = $"PAC-{DateTime.Now:yyyy}-{_secuencias.Siguiente("paciente"):D4}",
+            AseguradoraId = dto.AseguradoraId,
+            NumeroPoliza = dto.AseguradoraId.HasValue ? Texto.Limpiar(dto.NumeroPoliza) : null,
+            Alergias = Texto.Limpiar(dto.Alergias),
             Activo = dto.Activo
         };
 
-        return Map(_repository.Add(paciente));
+        return Map(_pacientes.Add(paciente));
     }
 
     public PacienteResponseDto Actualizar(int id, ActualizarPacienteDto dto)
     {
-        var paciente = _repository.GetById(id)
-            ?? throw new NotFoundException($"No se encontró el paciente con ID {id}.");
+        var paciente = ObtenerPaciente(id);
+        ValidarAseguradora(dto.AseguradoraId);
 
-        paciente.Nombres = dto.Nombres.Trim();
-        paciente.Apellidos = dto.Apellidos.Trim();
-        paciente.FechaNacimiento = dto.FechaNacimiento;
-        paciente.Telefono = dto.Telefono;
-        paciente.Email = dto.Email;
-        paciente.Direccion = dto.Direccion;
-        paciente.TipoSeguro = dto.TipoSeguro;
-        paciente.NumeroPoliza = dto.NumeroPoliza;
+        _personaService.Actualizar(paciente.PersonaId, dto.Persona);
+        paciente.AseguradoraId = dto.AseguradoraId;
+        paciente.NumeroPoliza = dto.AseguradoraId.HasValue ? Texto.Limpiar(dto.NumeroPoliza) : null;
+        paciente.Alergias = Texto.Limpiar(dto.Alergias);
         paciente.Activo = dto.Activo;
 
-        return Map(_repository.Update(paciente));
+        return Map(_pacientes.Update(paciente));
     }
 
     public void Eliminar(int id)
     {
-        if (!_repository.SoftDelete(id))
-        {
-            throw new NotFoundException($"No se encontró el paciente con ID {id}.");
-        }
+        var paciente = ObtenerPaciente(id);
+        paciente.Activo = false;
+        _pacientes.Update(paciente);
     }
 
-    private static PacienteResponseDto Map(Paciente p) => new()
+    private Paciente ObtenerPaciente(int id) =>
+        _pacientes.GetById(id) ?? throw new NotFoundException($"No se encontró el paciente con ID {id}.");
+
+    private void ValidarAseguradora(int? aseguradoraId)
+    {
+        if (aseguradoraId is null) return;
+
+        var aseguradora = _aseguradoras.GetById(aseguradoraId.Value);
+        if (aseguradora is null || !aseguradora.Activo)
+            throw new BusinessException($"La aseguradora con ID {aseguradoraId} no existe o está inactiva.");
+    }
+
+    private PacienteResponseDto Map(Paciente p) => new PacienteResponseDto
     {
         Id = p.Id,
         CodigoPaciente = p.CodigoPaciente,
-        TipoDocumento = p.TipoDocumento,
-        NumeroDocumento = p.NumeroDocumento,
-        Nombres = p.Nombres,
-        Apellidos = p.Apellidos,
-        NombreCompleto = p.NombreCompleto,
-        FechaNacimiento = p.FechaNacimiento,
-        Telefono = p.Telefono,
-        Email = p.Email,
-        Direccion = p.Direccion,
-        TipoSeguro = p.TipoSeguro,
+        AseguradoraId = p.AseguradoraId,
+        AseguradoraNombre = p.AseguradoraId is int a ? _aseguradoras.GetById(a)?.Nombre : null,
         NumeroPoliza = p.NumeroPoliza,
+        Alergias = p.Alergias,
         Activo = p.Activo,
-        FechaRegistro = p.FechaRegistro
-    };
+        Persona = _personaService.Map(p.PersonaId)
+    }.ConAuditoria(p);
 }

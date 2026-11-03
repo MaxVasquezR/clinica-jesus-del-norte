@@ -35,6 +35,8 @@ public class ExceptionMiddleware
             {
                 var message = context.Response.StatusCode switch
                 {
+                    StatusCodes.Status401Unauthorized => "Debe iniciar sesión: envíe el token en la cabecera Authorization: Bearer {token}.",
+                    StatusCodes.Status403Forbidden => "Su rol no tiene permiso para esta operación.",
                     StatusCodes.Status404NotFound => "El recurso solicitado no existe.",
                     StatusCodes.Status405MethodNotAllowed => "El método HTTP no está permitido en esta ruta.",
                     StatusCodes.Status415UnsupportedMediaType => "El tipo de contenido no es compatible. Use application/json.",
@@ -60,6 +62,8 @@ public class ExceptionMiddleware
             NotFoundException => (StatusCodes.Status404NotFound, exception.Message),
             ConflictException => (StatusCodes.Status409Conflict, exception.Message),
             BusinessException => (StatusCodes.Status422UnprocessableEntity, exception.Message),
+            UnauthorizedException => (StatusCodes.Status401Unauthorized, exception.Message),
+            ForbiddenException => (StatusCodes.Status403Forbidden, exception.Message),
             _ => (StatusCodes.Status500InternalServerError, "Ocurrió un error interno en el servidor.")
         };
 

@@ -14,3 +14,15 @@ public class BusinessException : Exception
 {
     public BusinessException(string message) : base(message) { }
 }
+
+/// <summary>Credenciales inválidas o usuario bloqueado (401).</summary>
+public class UnauthorizedException : Exception
+{
+    public UnauthorizedException(string message) : base(message) { }
+}
+
+/// <summary>El usuario tiene sesión pero no puede operar sobre ese registro (403).</summary>
+public class ForbiddenException : Exception
+{
+    public ForbiddenException(string message) : base(message) { }
+}

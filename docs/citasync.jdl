@@ -1,0 +1,346 @@
+/*
+ * CitaSync - Clínica Jesús del Norte
+ * Modelo de datos en JDL (JHipster Domain Language).
+ * Diagrama: pegar este archivo en https://start.jhipster.tech/jdl-studio/
+ *
+ * QUIÉN USA EL SISTEMA
+ * Toda persona que inicia sesión es un Usuario. Usuario.username y
+ * Usuario.contrasenaHash guardan el acceso; Usuario.rol guarda qué puede hacer.
+ *   ADMINISTRADOR  gestiona usuarios, médicos, horarios y catálogos
+ *   RECEPCIONISTA  registra pacientes y reserva, confirma o cancela citas
+ *   ENFERMERA      registra el triaje
+ *   MEDICO         registra la atención, diagnósticos y recetas
+ *   CAJERO         registra y anula pagos
+ * El paciente no inicia sesión: el personal registra sus datos y sus citas.
+ *
+ * AUDITORÍA (en todas las entidades)
+ *   fechaCreacion, usuarioCreacion            cuándo y quién creó el registro
+ *   fechaActualizacion, usuarioActualizacion  cuándo y quién lo modificó por
+ *                                             última vez (vacíos hasta entonces)
+ * usuarioCreacion y usuarioActualizacion guardan el Usuario.username de la
+ * sesión. Son texto y no FK: el rastro sobrevive aunque el usuario se elimine.
+ * Los datos iniciales usan el valor SISTEMA.
+ *
+ * No se usa ManyToMany: generaría tablas intermedias sin auditoría. Por eso
+ * MedicoEspecialidad y AtencionDiagnostico son entidades propias.
+ *
+ * REGLAS QUE JDL NO PUEDE EXPRESAR (se validan en el servicio)
+ *   - Persona: tipoDocumento + numeroDocumento debe ser único.
+ *   - MedicoEspecialidad: medico + especialidad debe ser único.
+ *   - AtencionDiagnostico: atencion + cie10 debe ser único, y cada atención
+ *     tiene un solo diagnóstico principal.
+ *   - CitaMedica: el médico debe tener la especialidad de la cita, y la hora
+ *     debe caer en su HorarioMedico sin solaparse con otra de sus citas.
+ *   - CitaMedica: observacionCancelacion es obligatoria si estado = CANCELADA.
+ *   - Paciente: numeroPoliza es obligatorio si tiene aseguradora.
+ *   - Usuario: quien tiene rol MEDICO debe tener, a través de Persona, su
+ *     registro en Medico.
+ *   - PagoTransaccion: una cita tiene como máximo un pago PAGADO vigente.
+ *   - PagoTransaccion: numeroOperacion es obligatorio salvo en EFECTIVO;
+ *     rucCliente y razonSocialCliente, si el comprobante es FACTURA;
+ *     motivoAnulacion, si estadoPago es ANULADO o REEMBOLSADO.
+ *
+ * JDL no soporta herencia ni tipo hora: por eso Persona es una tabla propia y
+ * horaInicio/horaFin son texto HH:mm.
+ */
+
+// ---------- Enumeraciones ----------
+
+enum TipoRol {
+  ADMINISTRADOR, RECEPCIONISTA, ENFERMERA, MEDICO, CAJERO
+}
+
+enum TipoDocumento {
+  DNI, CARNET_EXTRANJERIA, PASAPORTE
+}
+
+enum Sexo {
+  FEMENINO, MASCULINO
+}
+
+enum DiaSemana {
+  LUNES, MARTES, MIERCOLES, JUEVES, VIERNES, SABADO, DOMINGO
+}
+
+enum EstadoCita {
+  SOLICITADA, CONFIRMADA, EN_TRIAJE, EN_ATENCION, FINALIZADA, CANCELADA, NO_ASISTIO
+}
+
+enum PrioridadTriaje {
+  BAJA, MEDIA, ALTA, CRITICA
+}
+
+enum EstadoAtencion {
+  EN_CURSO, COMPLETADA, SUSPENDIDA
+}
+
+enum MetodoPago {
+  YAPE, PLIN, TARJETA, EFECTIVO
+}
+
+enum EstadoPago {
+  PENDIENTE, PAGADO, ANULADO, REEMBOLSADO
+}
+
+enum TipoComprobante {
+  BOLETA, FACTURA
+}
+
+// ---------- Seguridad ----------
+
+/** Perfil de acceso: define qué puede hacer un usuario en el sistema. */
+entity Rol {
+  nombre TipoRol required unique
+  descripcion String maxlength(200)
+  activo Boolean required
+  fechaCreacion Instant required
+  usuarioCreacion String required maxlength(50)
+  fechaActualizacion Instant
+  usuarioActualizacion String maxlength(50)
+}
+
+/** Cuenta con la que el personal inicia sesión. La contraseña nunca se guarda en texto plano. */
+entity Usuario {
+  username String required unique minlength(4) maxlength(50)
+  contrasenaHash String required maxlength(100)
+  activo Boolean required
+  intentosFallidos Integer required min(0)
+  bloqueadoHasta Instant
+  ultimoAcceso Instant
+  fechaCreacion Instant required
+  usuarioCreacion String required maxlength(50)
+  fechaActualizacion Instant
+  usuarioActualizacion String maxlength(50)
+}
+
+// ---------- Personas ----------
+
+/** Datos demográficos de cualquier persona: paciente, médico o personal. */
+entity Persona {
+  tipoDocumento TipoDocumento required
+  numeroDocumento String required minlength(5) maxlength(15)
+  nombres String required minlength(2) maxlength(100)
+  apellidos String required minlength(2) maxlength(100)
+  fechaNacimiento LocalDate
+  sexo Sexo
+  telefono String maxlength(20) pattern(/^[+]?[0-9]{7,15}$/)
+  email String maxlength(120) pattern(/^[^@\s]+@[^@\s]+\.[^@\s]+$/)
+  direccion String maxlength(200)
+  fechaCreacion Instant required
+  usuarioCreacion String required maxlength(50)
+  fechaActualizacion Instant
+  usuarioActualizacion String maxlength(50)
+}
+
+/** Compañía de seguros. Un paciente sin aseguradora es particular. */
+entity Aseguradora {
+  nombre String required unique minlength(2) maxlength(100)
+  activo Boolean required
+  fechaCreacion Instant required
+  usuarioCreacion String required maxlength(50)
+  fechaActualizacion Instant
+  usuarioActualizacion String maxlength(50)
+}
+
+/** Paciente de la clínica. codigoPaciente es su número de historia clínica. */
+entity Paciente {
+  codigoPaciente String required unique pattern(/^PAC-[0-9]{4}-[0-9]{4}$/)
+  numeroPoliza String maxlength(40)
+  alergias String maxlength(500)
+  activo Boolean required
+  fechaCreacion Instant required
+  usuarioCreacion String required maxlength(50)
+  fechaActualizacion Instant
+  usuarioActualizacion String maxlength(50)
+}
+
+/** Especialidad médica con tarifa base de consulta. */
+entity Especialidad {
+  nombre String required unique minlength(3) maxlength(100)
+  descripcion String maxlength(300)
+  precioBase BigDecimal required min(0) max(99999.99)
+  activo Boolean required
+  fechaCreacion Instant required
+  usuarioCreacion String required maxlength(50)
+  fechaActualizacion Instant
+  usuarioActualizacion String maxlength(50)
+}
+
+/** Médico colegiado; puede atender más de una especialidad. */
+entity Medico {
+  codigoColegiatura String required unique minlength(3) maxlength(20)
+  rne String maxlength(30)
+  activo Boolean required
+  fechaCreacion Instant required
+  usuarioCreacion String required maxlength(50)
+  fechaActualizacion Instant
+  usuarioActualizacion String maxlength(50)
+}
+
+/** Especialidad que atiende un médico. */
+entity MedicoEspecialidad {
+  activo Boolean required
+  fechaCreacion Instant required
+  usuarioCreacion String required maxlength(50)
+  fechaActualizacion Instant
+  usuarioActualizacion String maxlength(50)
+}
+
+/** Bloque semanal de atención de un médico, en HH:mm. */
+entity HorarioMedico {
+  diaSemana DiaSemana required
+  horaInicio String required pattern(/^([01][0-9]|2[0-3]):[0-5][0-9]$/)
+  horaFin String required pattern(/^([01][0-9]|2[0-3]):[0-5][0-9]$/)
+  duracionCitaMinutos Integer required min(5) max(240)
+  consultorio String maxlength(20)
+  activo Boolean required
+  fechaCreacion Instant required
+  usuarioCreacion String required maxlength(50)
+  fechaActualizacion Instant
+  usuarioActualizacion String maxlength(50)
+}
+
+// ---------- Citas ----------
+
+/** Cita médica. precioConsulta congela la tarifa vigente al reservar. */
+entity CitaMedica {
+  codigoCita String required unique pattern(/^CJN-[0-9]{4}-[0-9]{4}$/)
+  fechaHoraCita Instant required
+  motivoConsulta String maxlength(500)
+  precioConsulta BigDecimal required min(0) max(99999.99)
+  estado EstadoCita required
+  fechaHoraLlegada Instant
+  observacionCancelacion String maxlength(500)
+  fechaCreacion Instant required
+  usuarioCreacion String required maxlength(50)
+  fechaActualizacion Instant
+  usuarioActualizacion String maxlength(50)
+}
+
+/** Cada cambio de estado de una cita. Cuándo y quién: fechaCreacion y usuarioCreacion. */
+entity HistorialCita {
+  estadoAnterior EstadoCita
+  estadoNuevo EstadoCita required
+  observacion String maxlength(500)
+  fechaCreacion Instant required
+  usuarioCreacion String required maxlength(50)
+  fechaActualizacion Instant
+  usuarioActualizacion String maxlength(50)
+}
+
+// ---------- Atención clínica ----------
+
+/** Registro de triaje de una cita. */
+entity Triaje {
+  fechaHoraTriaje Instant required
+  sintomas String maxlength(500)
+  presionArterial String maxlength(20) pattern(/^[0-9]{2,3}[/][0-9]{2,3}$/)
+  frecuenciaCardiaca Integer min(30) max(250)
+  frecuenciaRespiratoria Integer min(5) max(70)
+  saturacionOxigeno Integer min(0) max(100)
+  temperatura BigDecimal min(30) max(45)
+  pesoKg BigDecimal min(1) max(300)
+  tallaCm BigDecimal min(30) max(250)
+  prioridad PrioridadTriaje required
+  fechaCreacion Instant required
+  usuarioCreacion String required maxlength(50)
+  fechaActualizacion Instant
+  usuarioActualizacion String maxlength(50)
+}
+
+/** Atención médica de una cita: la historia clínica es el conjunto de atenciones del paciente. */
+entity AtencionMedica {
+  fechaHoraInicio Instant required
+  fechaHoraFin Instant
+  evolucion String maxlength(1000)
+  tratamiento String maxlength(1000)
+  estado EstadoAtencion required
+  fechaCreacion Instant required
+  usuarioCreacion String required maxlength(50)
+  fechaActualizacion Instant
+  usuarioActualizacion String maxlength(50)
+}
+
+/** Catálogo de diagnósticos de la clasificación CIE-10. */
+entity Cie10 {
+  codigo String required unique pattern(/^[A-Z][0-9]{2}([.][0-9A-Z]{1,4})?$/)
+  descripcion String required maxlength(300)
+  activo Boolean required
+  fechaCreacion Instant required
+  usuarioCreacion String required maxlength(50)
+  fechaActualizacion Instant
+  usuarioActualizacion String maxlength(50)
+}
+
+/** Diagnóstico CIE-10 registrado en una atención. */
+entity AtencionDiagnostico {
+  principal Boolean required
+  observacion String maxlength(500)
+  fechaCreacion Instant required
+  usuarioCreacion String required maxlength(50)
+  fechaActualizacion Instant
+  usuarioActualizacion String maxlength(50)
+}
+
+/** Medicamento recetado en una atención. */
+entity RecetaDetalle {
+  medicamento String required maxlength(150)
+  dosis String required maxlength(50)
+  frecuencia String required maxlength(50)
+  duracionDias Integer required min(1) max(365)
+  indicaciones String maxlength(500)
+  fechaCreacion Instant required
+  usuarioCreacion String required maxlength(50)
+  fechaActualizacion Instant
+  usuarioActualizacion String maxlength(50)
+}
+
+// ---------- Pagos ----------
+
+/** Transacción de pago. Una cita acepta varias: un pago anulado se reemplaza por otro. */
+entity PagoTransaccion {
+  codigoTransaccion String required unique pattern(/^TXN-[0-9]{8}-[0-9]{5}$/)
+  montoTotal BigDecimal required min(0.01) max(99999.99)
+  metodoPago MetodoPago required
+  estadoPago EstadoPago required
+  numeroOperacion String maxlength(40)
+  tipoComprobante TipoComprobante required
+  numeroComprobante String required unique pattern(/^[BF][0-9]{3}-[0-9]{6,8}$/)
+  rucCliente String pattern(/^(10|15|17|20)[0-9]{9}$/)
+  razonSocialCliente String maxlength(150)
+  motivoAnulacion String maxlength(300)
+  fechaHoraPago Instant required
+  fechaCreacion Instant required
+  usuarioCreacion String required maxlength(50)
+  fechaActualizacion Instant
+  usuarioActualizacion String maxlength(50)
+}
+
+// ---------- Relaciones ----------
+
+relationship OneToOne {
+  Usuario{persona(numeroDocumento) required} to Persona{usuario(username)}
+  Paciente{persona(numeroDocumento) required} to Persona{paciente(codigoPaciente)}
+  Medico{persona(numeroDocumento) required} to Persona{medico(codigoColegiatura)}
+  Triaje{cita(codigoCita) required} to CitaMedica{triaje}
+  AtencionMedica{cita(codigoCita) required} to CitaMedica{atencion}
+}
+
+relationship ManyToOne {
+  Usuario{rol(nombre) required} to Rol
+  Paciente{aseguradora(nombre)} to Aseguradora
+  CitaMedica{paciente(codigoPaciente) required} to Paciente
+  CitaMedica{medico(codigoColegiatura) required} to Medico
+  CitaMedica{especialidad(nombre) required} to Especialidad
+  AtencionDiagnostico{cie10(codigo) required} to Cie10
+}
+
+relationship OneToMany {
+  Medico{especialidades} to MedicoEspecialidad{medico(codigoColegiatura) required}
+  Especialidad{medicos} to MedicoEspecialidad{especialidad(nombre) required}
+  Medico{horario} to HorarioMedico{medico(codigoColegiatura) required}
+  CitaMedica{historial} to HistorialCita{cita(codigoCita) required}
+  CitaMedica{pago} to PagoTransaccion{cita(codigoCita) required}
+  AtencionMedica{diagnostico} to AtencionDiagnostico{atencion required}
+  AtencionMedica{recetaDetalle} to RecetaDetalle{atencion required}
+}

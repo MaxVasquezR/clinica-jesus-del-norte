@@ -1,13 +1,14 @@
-using ClinicaJesusDelNorte.API.Models.Enums;
-
 namespace ClinicaJesusDelNorte.API.Models.Entities;
 
 /// <summary>
-/// Paciente de la Clínica Jesús del Norte. Hereda datos demográficos de <see cref="Persona"/>.
+/// Paciente de la clínica. CodigoPaciente es su número de historia clínica.
 /// </summary>
-public class Paciente : Persona
+public class Paciente : EntidadAuditable
 {
+    public int PersonaId { get; set; }
     public string CodigoPaciente { get; set; } = string.Empty;
-    public TipoSeguro TipoSeguro { get; set; } = TipoSeguro.Particular;
+    public int? AseguradoraId { get; set; }
     public string? NumeroPoliza { get; set; }
+    public string? Alergias { get; set; }
+    public bool Activo { get; set; } = true;
 }

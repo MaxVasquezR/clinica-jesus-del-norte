@@ -33,7 +33,7 @@ public class ActualizarEspecialidadDto
     public bool Activo { get; set; } = true;
 }
 
-public class EspecialidadResponseDto
+public class EspecialidadResponseDto : AuditoriaResponseDto
 {
     public int Id { get; set; }
     public string Nombre { get; set; } = string.Empty;
